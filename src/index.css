@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand Colors - Custom Theme */
+  --color-background: 34 100% 94%;  /* #FEF3E2 - cream/beige */
+  --color-foreground: 20 15% 20%;    /* Dark gray for text */
+  --color-card: 0 0% 100%;           /* White for cards */
+  --color-card-foreground: 20 15% 20%;
+  --color-popover: 0 0% 100%;
+  --color-popover-foreground: 20 15% 20%;
+  --color-primary: 20 98% 58%;       /* #FA812F - darker orange */
+  --color-primary-foreground: 0 0% 100%;
+  --color-secondary: 42 96% 55%;     /* #FAB12F - amber */
+  --color-secondary-foreground: 20 15% 20%;
+  --color-muted: 34 45% 90%;
+  --color-muted-foreground: 20 10% 45%;
+  --color-accent: 42 96% 55%;        /* #FAB12F */
+  --color-accent-foreground: 20 15% 20%;
+  --color-destructive: 0 84% 60%;
+  --color-destructive-foreground: 0 0% 100%;
+  --color-success: 142 71% 45%;
+  --color-success-foreground: 0 0% 100%;
+  --color-warning: 42 96% 55%;
+  --color-warning-foreground: 20 15% 20%;
+  --color-border: 34 30% 85%;
+  --color-input: 34 30% 85%;
+  --color-ring: 20 98% 58%;
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: 20 15% 12%;
+    --color-foreground: 34 100% 94%;
+    --color-card: 20 15% 15%;
+    --color-card-foreground: 34 100% 94%;
+    --color-popover: 20 15% 15%;
+    --color-popover-foreground: 34 100% 94%;
+    --color-primary: 20 98% 58%;
+    --color-primary-foreground: 0 0% 100%;
+    --color-secondary: 42 96% 55%;
+    --color-secondary-foreground: 20 15% 20%;
+    --color-muted: 20 15% 20%;
+    --color-muted-foreground: 34 30% 65%;
+    --color-accent: 42 96% 55%;
+    --color-accent-foreground: 20 15% 20%;
+    --color-destructive: 0 62% 40%;
+    --color-destructive-foreground: 0 0% 100%;
+    --color-success: 142 71% 45%;
+    --color-success-foreground: 0 0% 100%;
+    --color-border: 20 15% 25%;
+    --color-input: 20 15% 25%;
+    --color-ring: 20 98% 58%;
+  }
+}
+
+* {
+  border-color: hsl(var(--color-border));
+}
+
+body {
+  background-color: hsl(var(--color-background));
+  color: hsl(var(--color-foreground));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+}
