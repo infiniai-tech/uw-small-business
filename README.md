@@ -35,6 +35,34 @@ npm run build
 npm run preview
 ```
 
+### Deploy to GitHub Pages
+
+1. **Push your code to GitHub** (if not already done):
+   ```bash
+   git add .
+   git commit -m "Initial commit"
+   git remote add origin https://github.com/YOUR_USERNAME/uw-small-business.git
+   git push -u origin main
+   ```
+
+2. **Update the base path** in `vite.config.js` if your repository name is different:
+   - If your repo is `https://github.com/username/uw-small-business`, the base path is `/uw-small-business/`
+   - If your repo name is different, update line 7 in `vite.config.js` to match your repo name
+
+3. **Deploy**:
+   ```bash
+   npm run deploy
+   ```
+
+4. **Enable GitHub Pages**:
+   - Go to your repository on GitHub
+   - Navigate to **Settings** → **Pages**
+   - Under **Source**, select **gh-pages** branch
+   - Click **Save**
+   - Your site will be live at: `https://YOUR_USERNAME.github.io/uw-small-business/`
+
+**Note:** The first deployment may take a few minutes. After that, each time you run `npm run deploy`, your changes will be live within 1-2 minutes.
+
 ## Project Structure
 
 ```
@@ -126,28 +154,6 @@ Dark mode is configured using media queries:
   }
 }
 ```
-
-## Deployment
-
-This app is configured for easy deployment to Vercel.
-
-### Quick Deploy to Vercel
-
-1. Push your code to GitHub
-2. Go to [vercel.com](https://vercel.com) and sign in with GitHub
-3. Click "Add New Project" and import your repository
-4. Vercel will auto-detect Vite settings
-5. Click "Deploy" - done!
-
-See [DEPLOYMENT.md](./DEPLOYMENT.md) for detailed deployment instructions.
-
-### Build for Production
-
-```bash
-npm run build
-```
-
-The build output will be in the `dist` directory, ready for deployment.
 
 ## License
 
