@@ -1,7 +1,7 @@
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FileText, Users, ClipboardCheck } from "lucide-react"
+import { Settings, Briefcase, FileCheck } from "lucide-react"
 
 const LandingPage = ({ onSelectRole }) => {
   const roles = [
@@ -9,7 +9,7 @@ const LandingPage = ({ onSelectRole }) => {
       id: "admin",
       title: "Admin",
       description: "Upload policy documents, extract rules, and run tests",
-      icon: FileText,
+      icon: Settings,
       features: [
         "Upload policy documents",
         "View document library",
@@ -21,7 +21,7 @@ const LandingPage = ({ onSelectRole }) => {
       id: "broker",
       title: "Broker",
       description: "Submit loan applications and view instant decisions",
-      icon: Users,
+      icon: Briefcase,
       features: [
         "Submit customer applications",
         "Get instant decisions",
@@ -33,7 +33,7 @@ const LandingPage = ({ onSelectRole }) => {
       id: "underwriter",
       title: "Underwriter",
       description: "Review applications and make final decisions",
-      icon: ClipboardCheck,
+      icon: FileCheck,
       features: [
         "Review all applications",
         "Analyze risk indicators",
@@ -97,18 +97,18 @@ const LandingPage = ({ onSelectRole }) => {
             {roles.map((role) => {
               const Icon = role.icon
               return (
-                <Card key={role.id} className="hover:shadow-lg transition-shadow">
+                <Card key={role.id} className="hover:shadow-lg transition-shadow flex flex-col h-full">
                   <CardHeader className="text-center">
-                    <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-primary)/10)' }}>
-                      <Icon className="w-8 h-8" style={{ color: 'hsl(var(--color-primary))' }} />
+                    <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-primary))' }}>
+                      <Icon className="w-8 h-8" style={{ color: 'white' }} />
                     </div>
                     <CardTitle className="text-2xl">{role.title}</CardTitle>
                     <CardDescription className="mt-2">
                       {role.description}
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
+                  <CardContent className="space-y-4 flex flex-col flex-1">
+                    <div className="space-y-2 flex-1">
                       {role.features.map((feature, index) => (
                         <div key={index} className="flex items-start gap-2 text-sm">
                           <div className="w-1.5 h-1.5 rounded-full mt-1.5" style={{ backgroundColor: 'hsl(var(--color-primary))' }} />
@@ -117,7 +117,7 @@ const LandingPage = ({ onSelectRole }) => {
                       ))}
                     </div>
                     <Button 
-                      className="w-full mt-4" 
+                      className="w-full mt-auto" 
                       size="lg"
                       onClick={() => onSelectRole(role.id)}
                     >
