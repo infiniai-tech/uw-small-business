@@ -1,4 +1,5 @@
 import * as React from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -7,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { ArrowLeft, CheckCircle, XCircle, Clock, AlertTriangle, Eye, ThumbsUp, ThumbsDown } from "lucide-react"
 
-const UnderwriterDashboard = ({ onBack }) => {
+const UnderwriterDashboard = () => {
+  const navigate = useNavigate()
   const [selectedApplication, setSelectedApplication] = React.useState(null)
   const [reviewNotes, setReviewNotes] = React.useState("")
 
@@ -122,26 +124,47 @@ const UnderwriterDashboard = ({ onBack }) => {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--color-background))' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 50%, #FEF3E2 100%)' }}>
       {/* Header */}
-      <header className="border-b" style={{ 
-        backgroundColor: 'hsl(var(--color-card))',
-        borderColor: 'hsl(var(--color-border))'
+      <header className="border-b shadow-lg" style={{ 
+        background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 100%)',
+        borderColor: 'rgba(250, 129, 47, 0.2)'
       }}>
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft className="w-5 h-5" />
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate('/landing')}
+                className="hover:scale-110 transition-transform duration-300"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.8) 0%, rgba(254, 243, 226, 0.6) 100%)'
+                }}
+              >
+                <ArrowLeft className="w-5 h-5" style={{ color: 'hsl(var(--color-primary))' }} />
               </Button>
               <div>
-                <h1 className="text-xl font-bold">Underwriter Dashboard</h1>
-                <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                <h1 className="text-2xl font-bold" style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>Underwriter Dashboard</h1>
+                <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
                   Review applications and make final decisions
                 </p>
               </div>
             </div>
-            <Badge variant="default">Underwriter</Badge>
+            <Badge 
+              variant="default"
+              className="shadow-md"
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)'
+              }}
+            >
+              Underwriter
+            </Badge>
           </div>
         </div>
       </header>
@@ -149,57 +172,93 @@ const UnderwriterDashboard = ({ onBack }) => {
       <main className="container mx-auto px-4 py-6 space-y-6">
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card>
+          <Card 
+            className="shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Total Applications</p>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Total Applications</p>
                   <p className="text-3xl font-bold mt-1">{applications.length}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-primary)/10)' }}>
-                  <Eye className="w-6 h-6" style={{ color: 'hsl(var(--color-primary))' }} />
+                <div 
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                  style={{ background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)' }}
+                >
+                  <Eye className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card 
+            className="shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Pending Review</p>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Pending Review</p>
                   <p className="text-3xl font-bold mt-1">{manualReviewQueue.length}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-warning)/10)' }}>
-                  <Clock className="w-6 h-6" style={{ color: 'hsl(var(--color-warning))' }} />
+                <div 
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                  style={{ background: 'linear-gradient(135deg, hsl(var(--color-secondary)) 0%, hsl(42, 96%, 50%) 100%)' }}
+                >
+                  <Clock className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card 
+            className="shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Approved</p>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Approved</p>
                   <p className="text-3xl font-bold mt-1">{approvedCount}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-success)/10)' }}>
-                  <CheckCircle className="w-6 h-6" style={{ color: 'hsl(var(--color-success))' }} />
+                <div 
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                  style={{ background: 'linear-gradient(135deg, hsl(var(--color-success)) 0%, hsl(142, 71%, 35%) 100%)' }}
+                >
+                  <CheckCircle className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
           </Card>
           
-          <Card>
+          <Card 
+            className="shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 border-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Rejected</p>
+                  <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Rejected</p>
                   <p className="text-3xl font-bold mt-1">{rejectedCount}</p>
                 </div>
-                <div className="w-12 h-12 rounded-full flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-destructive)/10)' }}>
-                  <XCircle className="w-6 h-6" style={{ color: 'hsl(var(--color-destructive))' }} />
+                <div 
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center shadow-md"
+                  style={{ background: 'linear-gradient(135deg, hsl(var(--color-destructive)) 0%, hsl(0, 84%, 50%) 100%)' }}
+                >
+                  <XCircle className="w-7 h-7 text-white" />
                 </div>
               </div>
             </CardContent>
@@ -307,14 +366,33 @@ const UnderwriterDashboard = ({ onBack }) => {
           <>
             {/* Manual Review Queue */}
             {manualReviewQueue.length > 0 && (
-              <Card>
+              <Card 
+                className="shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+                  backdropFilter: 'blur(10px)'
+                }}
+              >
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
-                      <CardTitle>Manual Review Queue</CardTitle>
-                      <CardDescription>Applications requiring underwriter review</CardDescription>
+                      <CardTitle className="text-xl font-bold" style={{
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                        WebkitBackgroundClip: 'text',
+                        WebkitTextFillColor: 'transparent',
+                        backgroundClip: 'text'
+                      }}>Manual Review Queue</CardTitle>
+                      <CardDescription className="font-medium">Applications requiring underwriter review</CardDescription>
                     </div>
-                    <Badge variant="secondary">{manualReviewQueue.length} Pending</Badge>
+                    <Badge 
+                      variant="secondary"
+                      className="shadow-md"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(var(--color-secondary)) 0%, hsl(42, 96%, 50%) 100%)'
+                      }}
+                    >
+                      {manualReviewQueue.length} Pending
+                    </Badge>
                   </div>
                 </CardHeader>
                 <CardContent>
@@ -353,14 +431,33 @@ const UnderwriterDashboard = ({ onBack }) => {
             )}
 
             {/* All Applications */}
-            <Card>
+            <Card 
+              className="shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+              style={{
+                background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+                backdropFilter: 'blur(10px)'
+              }}
+            >
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>All Applications</CardTitle>
-                    <CardDescription>Complete application history</CardDescription>
+                    <CardTitle className="text-xl font-bold" style={{
+                      background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}>All Applications</CardTitle>
+                    <CardDescription className="font-medium">Complete application history</CardDescription>
                   </div>
-                  <Badge variant="secondary">{applications.length} Total</Badge>
+                  <Badge 
+                    variant="secondary"
+                    className="shadow-md"
+                    style={{
+                      background: 'linear-gradient(135deg, hsl(var(--color-secondary)) 0%, hsl(42, 96%, 50%) 100%)'
+                    }}
+                  >
+                    {applications.length} Total
+                  </Badge>
                 </div>
               </CardHeader>
               <CardContent>

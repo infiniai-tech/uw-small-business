@@ -1,9 +1,11 @@
 import * as React from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Settings, Briefcase, FileCheck } from "lucide-react"
 
-const LandingPage = ({ onSelectRole }) => {
+const LandingPage = () => {
+  const navigate = useNavigate()
   const roles = [
     {
       id: "admin",
@@ -44,15 +46,18 @@ const LandingPage = ({ onSelectRole }) => {
   ]
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--color-background))' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 50%, #FEF3E2 100%)' }}>
       {/* Header */}
-      <header className="border-b" style={{ 
-        backgroundColor: 'hsl(var(--color-card))',
-        borderColor: 'hsl(var(--color-border))'
+      <header className="border-b shadow-sm" style={{ 
+        background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 100%)',
+        borderColor: 'rgba(250, 129, 47, 0.2)'
       }}>
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-primary))' }}>
+            <div 
+              className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg transform transition-transform hover:scale-105" 
+              style={{ background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)' }}
+            >
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 viewBox="0 0 24 24"
@@ -72,8 +77,13 @@ const LandingPage = ({ onSelectRole }) => {
               </svg>
             </div>
             <div>
-              <h1 className="text-2xl font-bold tracking-tight">UW Small Business Loan Platform</h1>
-              <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+              <h1 className="text-2xl font-bold tracking-tight" style={{
+                background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>UW Small Business Loan Platform</h1>
+              <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
                 Policy compliance and underwriting management system
               </p>
             </div>
@@ -86,40 +96,65 @@ const LandingPage = ({ onSelectRole }) => {
         <div className="max-w-6xl mx-auto">
           {/* Hero Section */}
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-bold mb-4">Select Your Role</h2>
-            <p className="text-lg" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+            <h2 className="text-5xl font-bold mb-4" style={{
+              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>Select Your Role</h2>
+            <p className="text-xl font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
               Choose your dashboard to get started with loan underwriting
             </p>
           </div>
 
           {/* Role Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {roles.map((role) => {
               const Icon = role.icon
               return (
-                <Card key={role.id} className="hover:shadow-lg transition-shadow flex flex-col h-full">
+                <Card 
+                  key={role.id} 
+                  className="hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col h-full border-0"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+                    backdropFilter: 'blur(10px)'
+                  }}
+                >
                   <CardHeader className="text-center">
-                    <div className="w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center" style={{ backgroundColor: 'hsl(var(--color-primary))' }}>
-                      <Icon className="w-8 h-8" style={{ color: 'white' }} />
+                    <div 
+                      className="w-20 h-20 rounded-2xl mx-auto mb-4 flex items-center justify-center shadow-lg transform transition-transform hover:scale-110"
+                      style={{ 
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)',
+                        boxShadow: '0 4px 12px rgba(250, 129, 47, 0.4)'
+                      }}
+                    >
+                      <Icon className="w-10 h-10 text-white" />
                     </div>
-                    <CardTitle className="text-2xl">{role.title}</CardTitle>
-                    <CardDescription className="mt-2">
+                    <CardTitle className="text-3xl font-bold mb-2">{role.title}</CardTitle>
+                    <CardDescription className="mt-2 text-base">
                       {role.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4 flex flex-col flex-1">
-                    <div className="space-y-2 flex-1">
+                    <div className="space-y-3 flex-1">
                       {role.features.map((feature, index) => (
-                        <div key={index} className="flex items-start gap-2 text-sm">
-                          <div className="w-1.5 h-1.5 rounded-full mt-1.5" style={{ backgroundColor: 'hsl(var(--color-primary))' }} />
-                          <span style={{ color: 'hsl(var(--color-muted-foreground))' }}>{feature}</span>
+                        <div key={index} className="flex items-start gap-3 text-sm">
+                          <div 
+                            className="w-2 h-2 rounded-full mt-2" 
+                            style={{ 
+                              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)'
+                            }} 
+                          />
+                          <span className="font-medium" style={{ color: 'hsl(var(--color-foreground))' }}>{feature}</span>
                         </div>
                       ))}
                     </div>
                     <Button 
-                      className="w-full mt-auto" 
-                      size="lg"
-                      onClick={() => onSelectRole(role.id)}
+                      className="w-full mt-auto h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all duration-300" 
+                      onClick={() => navigate(`/${role.id}`)}
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)'
+                      }}
                     >
                       Enter {role.title} Dashboard
                     </Button>
@@ -132,12 +167,12 @@ const LandingPage = ({ onSelectRole }) => {
       </main>
 
       {/* Footer */}
-      <footer className="border-t mt-auto" style={{ 
-        backgroundColor: 'hsl(var(--color-card))',
-        borderColor: 'hsl(var(--color-border))'
+      <footer className="border-t mt-auto shadow-sm" style={{ 
+        background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 100%)',
+        borderColor: 'rgba(250, 129, 47, 0.2)'
       }}>
         <div className="container mx-auto px-4 py-6">
-          <p className="text-center text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+          <p className="text-center text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
             Built with React, Vite, Tailwind CSS, and shadcn/ui
           </p>
         </div>

@@ -1,104 +1,181 @@
 import * as React from "react"
+import { useNavigate } from "react-router-dom"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { ArrowLeft, CheckCircle, XCircle, Clock, Send } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { ArrowLeft, CheckCircle, XCircle, Clock, Send, Loader2 } from "lucide-react"
+import { evaluatePolicy } from "@/services/api"
 
-const BrokerDashboard = ({ onBack }) => {
+const BrokerDashboard = () => {
+  const navigate = useNavigate()
+  const [policyType, setPolicyType] = React.useState("loan")
   const [formData, setFormData] = React.useState({
-    businessName: "",
-    applicantName: "",
-    loanAmount: "",
+    bankId: "chase",
+    age: "",
+    annualIncome: "",
     creditScore: "",
-    annualRevenue: "",
-    yearsInBusiness: "",
-    collateralValue: "",
-    debtToIncomeRatio: ""
+    // Loan specific
+    loanAmount: "",
+    personalGuarantee: false,
+    // Insurance specific
+    coverageAmount: "",
+    term: "",
+    insuranceType: "term_life",
+    healthConditions: "good",
+    smoker: false
   })
-  const [showResult, setShowResult] = React.useState(false)
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [decisionResult, setDecisionResult] = React.useState(null)
+  const [error, setError] = React.useState(null)
 
   // Mock applications history
   const [applications, setApplications] = React.useState([
-    { id: "APP-2024-001", businessName: "Tech Solutions LLC", submittedDate: "2024-01-15", loanAmount: "$500,000", status: "approved", decision: "Auto-Approved" },
-    { id: "APP-2024-002", businessName: "Green Energy Corp", submittedDate: "2024-01-14", loanAmount: "$750,000", status: "manual_review", decision: "Manual Review Required" },
-    { id: "APP-2024-003", businessName: "Retail Plus Inc", submittedDate: "2024-01-12", loanAmount: "$250,000", status: "rejected", decision: "Auto-Rejected" }
+    { id: "APP-2024-001", type: "loan", submittedDate: "2024-01-15", amount: "$150,000", status: "approved", decision: "Auto-Approved" },
+    { id: "APP-2024-002", type: "insurance", submittedDate: "2024-01-14", amount: "$500,000", status: "manual_review", decision: "Manual Review Required" },
+    { id: "APP-2024-003", type: "loan", submittedDate: "2024-01-12", amount: "$250,000", status: "rejected", decision: "Auto-Rejected" }
   ])
 
   const handleInputChange = (field, value) => {
     setFormData({ ...formData, [field]: value })
   }
 
-  const handleSubmit = () => {
-    // Mock decision logic
-    const creditScore = parseInt(formData.creditScore)
-    const yearsInBusiness = parseInt(formData.yearsInBusiness)
-    const loanAmount = parseFloat(formData.loanAmount)
-    const collateralValue = parseFloat(formData.collateralValue)
-    const ltv = collateralValue > 0 ? (loanAmount / collateralValue) * 100 : 100
+  const handlePolicyTypeChange = (value) => {
+    setPolicyType(value)
+    setDecisionResult(null)
+    setError(null)
+  }
 
-    let status, decision, message
+  const handleSubmit = async () => {
+    setIsSubmitting(true)
+    setError(null)
     
-    if (creditScore >= 720 && yearsInBusiness >= 5 && ltv <= 70) {
-      status = "approved"
-      decision = "Approved"
-      message = "Application meets all policy requirements and has been automatically approved."
-    } else if (creditScore < 650 || yearsInBusiness < 2 || ltv > 90) {
-      status = "rejected"
-      decision = "Rejected"
-      message = "Application does not meet minimum policy requirements."
-    } else {
-      status = "manual_review"
-      decision = "Manual Review Required"
-      message = "Application requires underwriter review due to borderline criteria."
-    }
+    try {
+      // Build request body based on policy type
+      const requestBody = {
+        bank_id: formData.bankId,
+        policy_type: policyType,
+        applicant: {
+          age: parseInt(formData.age),
+          annualIncome: parseFloat(formData.annualIncome),
+          creditScore: parseInt(formData.creditScore)
+        },
+        policy: {}
+      }
 
-    const newApp = {
-      id: `APP-2024-${String(applications.length + 1).padStart(3, '0')}`,
-      businessName: formData.businessName,
-      submittedDate: new Date().toISOString().split('T')[0],
-      loanAmount: `$${parseInt(formData.loanAmount).toLocaleString()}`,
-      status,
-      decision
-    }
+      if (policyType === "loan") {
+        requestBody.applicant = {
+          ...requestBody.applicant
+        }
+        requestBody.policy = {
+          loanAmount: parseFloat(formData.loanAmount),
+          personalGuarantee: formData.personalGuarantee
+        }
+      } else {
+        // Insurance
+        requestBody.applicant = {
+          ...requestBody.applicant,
+          healthConditions: formData.healthConditions,
+          smoker: formData.smoker
+        }
+        requestBody.policy = {
+          coverageAmount: parseFloat(formData.coverageAmount),
+          term: parseInt(formData.term),
+          type: formData.insuranceType
+        }
+      }
 
-    setApplications([newApp, ...applications])
-    setDecisionResult({ status, decision, message, appId: newApp.id })
-    setShowResult(true)
+      // Call the API
+      const result = await evaluatePolicy(requestBody)
+      
+      // Add to application history
+      const newApp = {
+        id: `APP-2024-${String(applications.length + 1).padStart(3, '0')}`,
+        type: policyType,
+        submittedDate: new Date().toISOString().split('T')[0],
+        amount: policyType === "loan" 
+          ? `$${parseInt(formData.loanAmount).toLocaleString()}`
+          : `$${parseInt(formData.coverageAmount).toLocaleString()}`,
+        status: result.decision?.approved ? "approved" : "rejected",
+        decision: result.decision?.approved ? "Approved" : "Rejected"
+      }
+      
+      setApplications([newApp, ...applications])
+      setDecisionResult(result)
+      setError(null) // Clear any previous errors on success
+    } catch (err) {
+      // Enhanced error handling
+      let errorMessage = "Failed to evaluate application. Please try again."
+      
+      if (err.message) {
+        errorMessage = err.message
+        // Add status code if available
+        if (err.status) {
+          errorMessage = `[${err.status}] ${errorMessage}`
+        }
+      } else if (err.name === 'TypeError' && err.message.includes('fetch')) {
+        errorMessage = "Unable to connect to the server. Please check if the API server is running on http://localhost:9000"
+      } else if (err.name === 'TypeError') {
+        errorMessage = "Network error. Please check your connection and try again."
+      }
+      
+      setError(errorMessage)
+      console.error("API Error:", err)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const handleNewApplication = () => {
-    setShowResult(false)
     setDecisionResult(null)
+    setError(null)
     setFormData({
-      businessName: "",
-      applicantName: "",
-      loanAmount: "",
+      bankId: "chase",
+      age: "",
+      annualIncome: "",
       creditScore: "",
-      annualRevenue: "",
-      yearsInBusiness: "",
-      collateralValue: "",
-      debtToIncomeRatio: ""
+      loanAmount: "",
+      personalGuarantee: false,
+      coverageAmount: "",
+      term: "",
+      insuranceType: "term_life",
+      healthConditions: "good",
+      smoker: false
     })
   }
 
   const fillSampleData = () => {
-    setFormData({
-      businessName: "Sample Business LLC",
-      applicantName: "John Doe",
-      loanAmount: "500000",
-      creditScore: "720",
-      annualRevenue: "2000000",
-      yearsInBusiness: "5",
-      collateralValue: "750000",
-      debtToIncomeRatio: "35"
-    })
+    if (policyType === "loan") {
+      setFormData({
+        ...formData,
+        bankId: "chase",
+        age: "35",
+        annualIncome: "85000",
+        creditScore: "720",
+        loanAmount: "150000",
+        personalGuarantee: false
+      })
+    } else {
+      setFormData({
+        ...formData,
+        bankId: "chase",
+        age: "35",
+        annualIncome: "75000",
+        creditScore: "720",
+        coverageAmount: "500000",
+        term: "20",
+        insuranceType: "term_life",
+        healthConditions: "good",
+        smoker: false
+      })
+    }
   }
 
-  const canSubmit = formData.businessName && formData.applicantName && formData.loanAmount && formData.creditScore
+  const canSubmit = formData.bankId && formData.age && formData.annualIncome && formData.creditScore && 
+    (policyType === "loan" ? formData.loanAmount : (formData.coverageAmount && formData.term))
 
   const getStatusIcon = (status) => {
     switch (status) {
@@ -127,164 +204,371 @@ const BrokerDashboard = ({ onBack }) => {
   }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'hsl(var(--color-background))' }}>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 50%, #FEF3E2 100%)' }}>
       {/* Header */}
-      <header className="border-b" style={{ 
-        backgroundColor: 'hsl(var(--color-card))',
-        borderColor: 'hsl(var(--color-border))'
+      <header className="border-b shadow-lg" style={{ 
+        background: 'linear-gradient(135deg, #FEF3E2 0%, #FFF5E6 100%)',
+        borderColor: 'rgba(250, 129, 47, 0.2)'
       }}>
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto px-4 py-5">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={onBack}>
-                <ArrowLeft className="w-5 h-5" />
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate('/landing')}
+                className="hover:scale-110 transition-transform duration-300"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.8) 0%, rgba(254, 243, 226, 0.6) 100%)'
+                }}
+              >
+                <ArrowLeft className="w-5 h-5" style={{ color: 'hsl(var(--color-primary))' }} />
               </Button>
               <div>
-                <h1 className="text-xl font-bold">Broker Dashboard</h1>
-                <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                <h1 className="text-2xl font-bold" style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>Broker Dashboard</h1>
+                <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
                   Submit loan applications and track decisions
                 </p>
               </div>
             </div>
-            <Badge variant="default">Broker</Badge>
+            <Badge 
+              variant="default"
+              className="shadow-md"
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)'
+              }}
+            >
+              Broker
+            </Badge>
           </div>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6">
-        {!showResult ? (
-          <>
-            {/* Application Form */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>New Loan Application</CardTitle>
-                    <CardDescription>Submit customer application for instant decision</CardDescription>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={fillSampleData}>
-                    Fill Sample Data
-                  </Button>
+        {/* Application Form */}
+        <Card 
+          className="shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl font-bold" style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>New {policyType === "loan" ? "Loan" : "Insurance"} Application</CardTitle>
+                <CardDescription className="font-medium">Submit customer application for instant decision</CardDescription>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={fillSampleData}
+                className="shadow-md hover:shadow-lg transition-all duration-300"
+                style={{
+                  borderColor: 'hsl(var(--color-primary))',
+                  color: 'hsl(var(--color-primary))'
+                }}
+              >
+                Fill Sample Data
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Policy Type Selector */}
+            <div className="space-y-2">
+              <Label htmlFor="policyType">Policy Type *</Label>
+              <Select value={policyType} onValueChange={handlePolicyTypeChange}>
+                <SelectTrigger id="policyType">
+                  <SelectValue placeholder="Select policy type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="loan">Loan Application</SelectItem>
+                  <SelectItem value="insurance">Insurance Application</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Bank ID Field */}
+            <div className="space-y-2">
+              <Label htmlFor="bankId">Bank ID *</Label>
+              <Input
+                id="bankId"
+                value={formData.bankId}
+                onChange={(e) => handleInputChange('bankId', e.target.value)}
+                placeholder="e.g., chase"
+              />
+            </div>
+
+            {/* Common Fields */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="age">Age *</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => handleInputChange('age', e.target.value)}
+                  placeholder="e.g., 35"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="creditScore">Credit Score *</Label>
+                <Input
+                  id="creditScore"
+                  type="number"
+                  value={formData.creditScore}
+                  onChange={(e) => handleInputChange('creditScore', e.target.value)}
+                  placeholder="e.g., 720"
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="annualIncome">Annual Income ($) *</Label>
+                <Input
+                  id="annualIncome"
+                  type="number"
+                  value={formData.annualIncome}
+                  onChange={(e) => handleInputChange('annualIncome', e.target.value)}
+                  placeholder="e.g., 85000"
+                />
+              </div>
+            </div>
+
+            {/* Loan Specific Fields */}
+            {policyType === "loan" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="loanAmount">Loan Amount ($) *</Label>
+                  <Input
+                    id="loanAmount"
+                    type="number"
+                    value={formData.loanAmount}
+                    onChange={(e) => handleInputChange('loanAmount', e.target.value)}
+                    placeholder="e.g., 150000"
+                  />
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="businessName">Business Name *</Label>
-                    <Input
-                      id="businessName"
-                      value={formData.businessName}
-                      onChange={(e) => handleInputChange('businessName', e.target.value)}
-                      placeholder="Enter business name"
+                <div className="space-y-2 flex items-end">
+                  <div className="flex items-center space-x-2 pb-2">
+                    <input
+                      type="checkbox"
+                      id="personalGuarantee"
+                      checked={formData.personalGuarantee}
+                      onChange={(e) => handleInputChange('personalGuarantee', e.target.checked)}
+                      className="w-4 h-4"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="applicantName">Applicant Name *</Label>
-                    <Input
-                      id="applicantName"
-                      value={formData.applicantName}
-                      onChange={(e) => handleInputChange('applicantName', e.target.value)}
-                      placeholder="Enter applicant name"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="loanAmount">Loan Amount ($) *</Label>
-                    <Input
-                      id="loanAmount"
-                      type="number"
-                      value={formData.loanAmount}
-                      onChange={(e) => handleInputChange('loanAmount', e.target.value)}
-                      placeholder="e.g., 500000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="creditScore">Credit Score *</Label>
-                    <Input
-                      id="creditScore"
-                      type="number"
-                      value={formData.creditScore}
-                      onChange={(e) => handleInputChange('creditScore', e.target.value)}
-                      placeholder="e.g., 720"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="annualRevenue">Annual Revenue ($)</Label>
-                    <Input
-                      id="annualRevenue"
-                      type="number"
-                      value={formData.annualRevenue}
-                      onChange={(e) => handleInputChange('annualRevenue', e.target.value)}
-                      placeholder="e.g., 2000000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="yearsInBusiness">Years in Business</Label>
-                    <Input
-                      id="yearsInBusiness"
-                      type="number"
-                      value={formData.yearsInBusiness}
-                      onChange={(e) => handleInputChange('yearsInBusiness', e.target.value)}
-                      placeholder="e.g., 5"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="collateralValue">Collateral Value ($)</Label>
-                    <Input
-                      id="collateralValue"
-                      type="number"
-                      value={formData.collateralValue}
-                      onChange={(e) => handleInputChange('collateralValue', e.target.value)}
-                      placeholder="e.g., 750000"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="debtToIncomeRatio">Debt-to-Income Ratio (%)</Label>
-                    <Input
-                      id="debtToIncomeRatio"
-                      type="number"
-                      step="0.01"
-                      value={formData.debtToIncomeRatio}
-                      onChange={(e) => handleInputChange('debtToIncomeRatio', e.target.value)}
-                      placeholder="e.g., 35"
-                    />
+                    <Label htmlFor="personalGuarantee" className="cursor-pointer">
+                      Personal Guarantee
+                    </Label>
                   </div>
                 </div>
-                <Button className="w-full" size="lg" onClick={handleSubmit} disabled={!canSubmit}>
+              </div>
+            )}
+
+            {/* Insurance Specific Fields */}
+            {policyType === "insurance" && (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="coverageAmount">Coverage Amount ($) *</Label>
+                  <Input
+                    id="coverageAmount"
+                    type="number"
+                    value={formData.coverageAmount}
+                    onChange={(e) => handleInputChange('coverageAmount', e.target.value)}
+                    placeholder="e.g., 500000"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="term">Term (years) *</Label>
+                  <Input
+                    id="term"
+                    type="number"
+                    value={formData.term}
+                    onChange={(e) => handleInputChange('term', e.target.value)}
+                    placeholder="e.g., 20"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="insuranceType">Insurance Type</Label>
+                  <Select 
+                    value={formData.insuranceType} 
+                    onValueChange={(value) => handleInputChange('insuranceType', value)}
+                  >
+                    <SelectTrigger id="insuranceType">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="term_life">Term Life</SelectItem>
+                      <SelectItem value="whole_life">Whole Life</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="healthConditions">Health Conditions</Label>
+                  <Select 
+                    value={formData.healthConditions} 
+                    onValueChange={(value) => handleInputChange('healthConditions', value)}
+                  >
+                    <SelectTrigger id="healthConditions">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="excellent">Excellent</SelectItem>
+                      <SelectItem value="good">Good</SelectItem>
+                      <SelectItem value="fair">Fair</SelectItem>
+                      <SelectItem value="poor">Poor</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 flex items-end">
+                  <div className="flex items-center space-x-2 pb-2">
+                    <input
+                      type="checkbox"
+                      id="smoker"
+                      checked={formData.smoker}
+                      onChange={(e) => handleInputChange('smoker', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <Label htmlFor="smoker" className="cursor-pointer">
+                      Smoker
+                    </Label>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="p-4 rounded-lg border-2" style={{ 
+                backgroundColor: '#fee2e2',
+                borderColor: '#dc2626',
+                color: '#991b1b'
+              }}>
+                <div className="flex items-start gap-3">
+                  <XCircle className="w-5 h-5 flex-shrink-0 mt-0.5" style={{ color: '#dc2626' }} />
+                  <div className="flex-1">
+                    <p className="font-semibold mb-1" style={{ color: '#991b1b' }}>Error</p>
+                    <p className="text-sm" style={{ color: '#991b1b' }}>{error}</p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <Button 
+              className="w-full h-12 font-semibold shadow-lg hover:shadow-xl transition-all duration-300" 
+              onClick={handleSubmit} 
+              disabled={!canSubmit || isSubmitting}
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)'
+              }}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Evaluating...
+                </>
+              ) : (
+                <>
                   <Send className="w-4 h-4 mr-2" />
                   Submit Application
-                </Button>
-              </CardContent>
-            </Card>
-          </>
-        ) : (
-          /* Decision Result */
-          <Card>
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Decision Result */}
+        {decisionResult && (
+          <Card 
+            className="shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+            style={{
+              background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+              backdropFilter: 'blur(10px)'
+            }}
+          >
             <CardHeader>
-              <CardTitle>Application Decision</CardTitle>
-              <CardDescription>Instant decision for application {decisionResult.appId}</CardDescription>
+              <CardTitle className="text-xl font-bold" style={{
+                background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>Application Decision</CardTitle>
+              <CardDescription className="font-medium">
+                Evaluation completed in {decisionResult.execution_time_ms}ms
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex items-center justify-center py-8">
                 <div className="text-center space-y-4">
                   <div className="w-20 h-20 rounded-full mx-auto flex items-center justify-center" style={{ 
-                    backgroundColor: decisionResult.status === 'approved' ? 'hsl(var(--color-success)/10)' : 
-                                     decisionResult.status === 'rejected' ? 'hsl(var(--color-destructive)/10)' : 
-                                     'hsl(var(--color-warning)/10)'
+                    backgroundColor: decisionResult.decision?.approved 
+                      ? 'hsl(var(--color-success)/10)' 
+                      : 'hsl(var(--color-destructive)/10)'
                   }}>
-                    {getStatusIcon(decisionResult.status)}
+                    {decisionResult.decision?.approved ? (
+                      <CheckCircle className="w-10 h-10" style={{ color: 'hsl(var(--color-success))' }} />
+                    ) : (
+                      <XCircle className="w-10 h-10" style={{ color: 'hsl(var(--color-destructive))' }} />
+                    )}
                   </div>
                   <div>
-                    <h3 className="text-2xl font-bold mb-2">{decisionResult.decision}</h3>
-                    <p style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-                      {decisionResult.message}
-                    </p>
+                    <h3 className="text-2xl font-bold mb-2">
+                      {decisionResult.decision?.approved ? "Approved" : "Rejected"}
+                    </h3>
+                    {decisionResult.decision?.premium_rate && (
+                      <p className="text-lg font-semibold mb-2" style={{ color: 'hsl(var(--color-primary))' }}>
+                        Premium Rate: {(decisionResult.decision.premium_rate * 100).toFixed(2)}%
+                      </p>
+                    )}
                   </div>
                   <div className="pt-4">
-                    {getStatusBadge(decisionResult.status)}
+                    {decisionResult.decision?.approved ? (
+                      <Badge variant="success">Approved</Badge>
+                    ) : (
+                      <Badge variant="destructive">Rejected</Badge>
+                    )}
                   </div>
                 </div>
               </div>
-              <Button className="w-full" onClick={handleNewApplication}>
+
+              {/* Reasons */}
+              {decisionResult.decision?.reasons && decisionResult.decision.reasons.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Decision Reasons:</h4>
+                  <ul className="list-disc list-inside space-y-1">
+                    {decisionResult.decision.reasons.map((reason, index) => (
+                      <li key={index} className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Application Details */}
+              <div className="grid grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: 'hsl(var(--color-border))' }}>
+                <div>
+                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank ID</p>
+                  <p className="font-medium">{decisionResult.bank_id}</p>
+                </div>
+                <div>
+                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Policy Type</p>
+                  <p className="font-medium capitalize">{decisionResult.policy_type}</p>
+                </div>
+                <div className="col-span-2">
+                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Container ID</p>
+                  <p className="font-mono text-xs">{decisionResult.container_id}</p>
+                </div>
+              </div>
+
+              <Button className="w-full" variant="outline" onClick={handleNewApplication}>
                 Submit New Application
               </Button>
             </CardContent>
@@ -292,14 +576,33 @@ const BrokerDashboard = ({ onBack }) => {
         )}
 
         {/* Application History */}
-        <Card>
+        <Card 
+          className="shadow-lg hover:shadow-xl transition-all duration-300 border-0"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.9) 0%, rgba(254, 243, 226, 0.7) 100%)',
+            backdropFilter: 'blur(10px)'
+          }}
+        >
           <CardHeader>
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Application History</CardTitle>
-                <CardDescription>Recent submitted applications</CardDescription>
+                <CardTitle className="text-xl font-bold" style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  backgroundClip: 'text'
+                }}>Application History</CardTitle>
+                <CardDescription className="font-medium">Recent submitted applications</CardDescription>
               </div>
-              <Badge variant="secondary">{applications.length} Applications</Badge>
+              <Badge 
+                variant="secondary"
+                className="shadow-md"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-secondary)) 0%, hsl(42, 96%, 50%) 100%)'
+                }}
+              >
+                {applications.length} Applications
+              </Badge>
             </div>
           </CardHeader>
           <CardContent>
@@ -308,8 +611,8 @@ const BrokerDashboard = ({ onBack }) => {
                 <TableRow>
                   <TableHead className="w-[40px]"></TableHead>
                   <TableHead>Application ID</TableHead>
-                  <TableHead>Business Name</TableHead>
-                  <TableHead>Loan Amount</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Amount</TableHead>
                   <TableHead>Submitted Date</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Decision</TableHead>
@@ -320,8 +623,8 @@ const BrokerDashboard = ({ onBack }) => {
                   <TableRow key={app.id}>
                     <TableCell>{getStatusIcon(app.status)}</TableCell>
                     <TableCell className="font-medium">{app.id}</TableCell>
-                    <TableCell>{app.businessName}</TableCell>
-                    <TableCell>{app.loanAmount}</TableCell>
+                    <TableCell className="capitalize">{app.type}</TableCell>
+                    <TableCell>{app.amount}</TableCell>
                     <TableCell>{app.submittedDate}</TableCell>
                     <TableCell>{getStatusBadge(app.status)}</TableCell>
                     <TableCell style={{ color: 'hsl(var(--color-muted-foreground))' }}>

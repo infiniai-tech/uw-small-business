@@ -1,35 +1,21 @@
-import { useState } from 'react'
+import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import LandingPage from '@/components/LandingPage'
+import HomeDashboard from '@/components/dashboards/HomeDashboard'
 import AdminDashboard from '@/components/dashboards/AdminDashboard'
 import BrokerDashboard from '@/components/dashboards/BrokerDashboard'
 import UnderwriterDashboard from '@/components/dashboards/UnderwriterDashboard'
 
 function App() {
-  const [currentView, setCurrentView] = useState('landing') // landing, admin, broker, underwriter
-
-  const handleSelectRole = (role) => {
-    setCurrentView(role)
-  }
-
-  const handleBackToLanding = () => {
-    setCurrentView('landing')
-  }
-
   return (
-    <>
-      {currentView === 'landing' && (
-        <LandingPage onSelectRole={handleSelectRole} />
-      )}
-      {currentView === 'admin' && (
-        <AdminDashboard onBack={handleBackToLanding} />
-      )}
-      {currentView === 'broker' && (
-        <BrokerDashboard onBack={handleBackToLanding} />
-      )}
-      {currentView === 'underwriter' && (
-        <UnderwriterDashboard onBack={handleBackToLanding} />
-      )}
-    </>
+    <BrowserRouter basename="/uw-small-business">
+      <Routes>
+        <Route path="/" element={<HomeDashboard />} />
+        <Route path="/landing" element={<LandingPage />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/broker" element={<BrokerDashboard />} />
+        <Route path="/underwriter" element={<UnderwriterDashboard />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
