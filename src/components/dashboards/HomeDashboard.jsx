@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { FileCheck, BarChart3, Users, Shield, TrendingUp, LayoutDashboard, Building2, Plus, Search, Upload, X, Loader2, CheckCircle, AlertCircle, FileText, Download, Eye, Play, XCircle, Clock, Zap, ArrowRight, GitBranch, ChevronLeft, ChevronRight } from "lucide-react"
-import { getAllBanks, getBankPolicies, getPolicyDetails, getExtractedRules, evaluatePolicy } from "@/services/api"
+import { getAllBanks, getBankPolicies, getPolicyDetails, getExtractedRules, evaluatePolicy, uploadDocumentToS3, processPolicyFromS3 } from "@/services/api"
 
 // Custom Rule Node Component for the board
 const RuleNode = ({ data }) => {
@@ -746,8 +746,72 @@ const HomeDashboard = () => {
     setVisibleSteps(0)
     setCurrentProcessingStep(0)
 
-    // Sequential processing: each step shows, processes for 3s, completes, then next step starts
-    // Step 1: Text Extraction
+    const bankId = bankName.toLowerCase().replace(/\s+/g, '_')
+
+    // IMMEDIATELY START THE API CALL IN THE BACKGROUND
+    const apiCallPromise = (async () => {
+      try {
+        // Upload file to S3
+        console.log('Uploading file to S3...')
+        const uploadResult = await uploadDocumentToS3(selectedFile, 'policies')
+        const s3Url = uploadResult.s3_url
+        console.log('File uploaded successfully:', s3Url)
+
+        // Process policy from S3 (this takes ~12 minutes)
+        console.log('Processing policy document...')
+        const apiResponse = await processPolicyFromS3({
+          s3_url: s3Url,
+          policy_type: insuranceType,
+          bank_id: bankId
+        })
+        console.log('Policy processed successfully:', apiResponse)
+
+        // Fetch extracted rules from the API
+        console.log('Fetching extracted rules...')
+        const rulesResponse = await getExtractedRules(bankId, insuranceType)
+        console.log('Extracted rules fetched:', rulesResponse)
+
+        // Transform API response to match UI format
+        const rules = rulesResponse.extracted_rules || apiResponse.extracted_rules || apiResponse.rules || []
+        const transformedRules = rules.map((rule, index) => ({
+          id: rule.id || index + 1,
+          name: rule.rule_name || rule.name || `Rule ${index + 1}`,
+          description: rule.description || rule.requirement || `${rule.field || ''} ${rule.operator || ''} ${rule.value || ''}`.trim(),
+          status: rule.is_active !== false ? "Active" : "Inactive",
+          confidence: rule.confidence || rule.confidence_score || 0.9
+        }))
+
+        return {
+          success: true,
+          data: {
+            bankId: bankId,
+            bankName: bankName,
+            insuranceType: insuranceType,
+            fileName: selectedFile.name,
+            fileSize: (selectedFile.size / 1024 / 1024).toFixed(2) + " MB",
+            processedAt: new Date().toLocaleString(),
+            status: "success",
+            rulesExtracted: transformedRules.length,
+            containerId: apiResponse.container_id || apiResponse.containerId || "container_" + Date.now(),
+            s3Url: s3Url,
+            jarUrl: apiResponse.jar_url || apiResponse.jarUrl,
+            drlUrl: apiResponse.drl_url || apiResponse.drlUrl,
+            excelUrl: apiResponse.excel_url || apiResponse.excelUrl,
+            container: apiResponse.container || rulesResponse.container || {},
+            rules: transformedRules
+          }
+        }
+      } catch (error) {
+        console.error('API Error:', error)
+        return {
+          success: false,
+          error: error.message || "Failed to process document"
+        }
+      }
+    })()
+
+    // MOCK UI PROCESSING STEPS WHILE API RUNS IN BACKGROUND
+    // Step 1: Text Extraction (2 minutes)
     processingTimersRef.current.push(
       setTimeout(() => {
         setVisibleSteps(1)
@@ -755,18 +819,18 @@ const HomeDashboard = () => {
       }, 500)
     )
     
-    // Step 1 completes after 3s, Step 2 starts
+    // Step 1 completes, Step 2 starts (2 minutes later)
     processingTimersRef.current.push(
       setTimeout(() => {
-        setCurrentProcessingStep(0) // Mark step 1 as completed
+        setCurrentProcessingStep(0)
         setTimeout(() => {
           setVisibleSteps(2)
           setCurrentProcessingStep(2)
         }, 300)
-      }, 3500)
+      }, 120500) // 2 minutes + 500ms initial delay
     )
     
-    // Step 2 completes after 3s, Step 3 starts
+    // Step 2 completes, Step 3 starts (2 minutes later)
     processingTimersRef.current.push(
       setTimeout(() => {
         setCurrentProcessingStep(0)
@@ -774,10 +838,10 @@ const HomeDashboard = () => {
           setVisibleSteps(3)
           setCurrentProcessingStep(3)
         }, 300)
-      }, 6800)
+      }, 240800) // 4 minutes total
     )
     
-    // Step 3 completes after 3s, Step 4 starts
+    // Step 3 completes, Step 4 starts (2 minutes later)
     processingTimersRef.current.push(
       setTimeout(() => {
         setCurrentProcessingStep(0)
@@ -785,10 +849,10 @@ const HomeDashboard = () => {
           setVisibleSteps(4)
           setCurrentProcessingStep(4)
         }, 300)
-      }, 10100)
+      }, 361100) // 6 minutes total
     )
     
-    // Step 4 completes after 3s, Step 5 starts
+    // Step 4 completes, Step 5 starts (2 minutes later)
     processingTimersRef.current.push(
       setTimeout(() => {
         setCurrentProcessingStep(0)
@@ -796,43 +860,43 @@ const HomeDashboard = () => {
           setVisibleSteps(5)
           setCurrentProcessingStep(5)
         }, 300)
-      }, 13400)
+      }, 481400) // 8 minutes total
     )
     
-    // Step 5 completes after 3s, all done
-    processingTimersRef.current.push(
+    // Step 5: Wait for API to complete and show results
+    try {
+      const result = await apiCallPromise
+      
+      // Mark step 5 as complete
+      setCurrentProcessingStep(0)
+      
       setTimeout(() => {
-        setCurrentProcessingStep(0)
-        setTimeout(() => {
+        if (result.success) {
           setProcessingStatus("completed")
+          setProcessingOutput(result.data)
+        } else {
+          setProcessingStatus("error")
           setProcessingOutput({
-            bankId: bankName.toLowerCase().replace(/\s+/g, '_'),
+            status: "error",
+            error: result.error,
             bankName: bankName,
-            insuranceType: insuranceType,
             fileName: selectedFile.name,
-            fileSize: (selectedFile.size / 1024 / 1024).toFixed(2) + " MB",
-            processedAt: new Date().toLocaleString(),
-            status: "success",
-            rulesExtracted: 12,
-            containerId: "container_" + Date.now(),
-            rules: [
-              { id: 1, name: "Age Verification Rule", description: "Validates applicant age between 18-65 years", status: "Active", confidence: 0.95 },
-              { id: 2, name: "Credit Score Assessment", description: "Evaluates minimum credit score of 650", status: "Active", confidence: 0.92 },
-              { id: 3, name: "Income Verification", description: "Requires minimum annual income of $30,000", status: "Active", confidence: 0.88 },
-              { id: 4, name: "Employment Status Check", description: "Validates continuous employment for 2+ years", status: "Active", confidence: 0.90 },
-              { id: 5, name: "Debt-to-Income Ratio", description: "Ensures DTI ratio below 43%", status: "Active", confidence: 0.93 },
-              { id: 6, name: "Previous Claims History", description: "Reviews claim history in last 5 years", status: "Active", confidence: 0.87 },
-              { id: 7, name: "Property Value Assessment", description: "Validates property value against loan amount", status: "Active", confidence: 0.91 },
-              { id: 8, name: "Geographic Risk Analysis", description: "Assesses location-based risk factors", status: "Active", confidence: 0.85 },
-              { id: 9, name: "Documentation Completeness", description: "Verifies all required documents are submitted", status: "Active", confidence: 0.94 },
-              { id: 10, name: "Fraud Detection Check", description: "Identifies potential fraudulent applications", status: "Active", confidence: 0.89 },
-              { id: 11, name: "Collateral Evaluation", description: "Assesses collateral value and condition", status: "Active", confidence: 0.86 },
-              { id: 12, name: "Final Approval Gate", description: "Comprehensive final decision rule", status: "Active", confidence: 0.96 }
-            ]
+            processedAt: new Date().toLocaleString()
           })
-        }, 300)
-      }, 16700)
-    )
+        }
+      }, 300)
+    } catch (error) {
+      console.error('Error in handleAddBank:', error)
+      setCurrentProcessingStep(0)
+      setProcessingStatus("error")
+      setProcessingOutput({
+        status: "error",
+        error: error.message || "An unexpected error occurred",
+        bankName: bankName,
+        fileName: selectedFile.name,
+        processedAt: new Date().toLocaleString()
+      })
+    }
   }
 
   const handleCloseModal = () => {
@@ -1489,18 +1553,6 @@ const HomeDashboard = () => {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button
-                      onClick={addNewRuleNode}
-                      size="sm"
-                      className="shadow-md hover:shadow-lg transition-all duration-300"
-                      style={{
-                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)',
-                        border: 'none'
-                      }}
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Add Rule Node
-                    </Button>
                     <div 
                       className="px-3 py-1.5 rounded-lg text-sm font-semibold"
                       style={{
@@ -1988,17 +2040,19 @@ const HomeDashboard = () => {
         console.log('API Response:', response)
         
         // Transform API response to match UI format
+        // Use hierarchical_rules and rule_evaluation_summary from the new API response
+        const summary = response.rule_evaluation_summary || {}
         const transformedResponse = {
           decision: response.decision?.approved ? "APPROVED" : "REJECTED",
           timeTaken: response.execution_time_ms || 0,
-          totalRules: response.rules?.length || 0,
-          rulesEvaluated: response.rules?.length || 0,
-          rulesPassed: response.rules?.filter(r => r.passed !== false).length || 0,
-          rulesFailed: response.rules?.filter(r => r.passed === false).length || 0,
+          totalRules: summary.total_rules || 0,
+          rulesEvaluated: summary.total_rules || 0,
+          rulesPassed: summary.passed || 0,
+          rulesFailed: summary.failed || 0,
           rejectionReason: response.decision?.approved === false 
             ? (response.decision?.reasons?.[0] || 'Application rejected')
             : null,
-          rules: response.rules || []
+          rules: response.hierarchical_rules || []
         }
         
         setTestResponse(transformedResponse)
@@ -2338,7 +2392,7 @@ const HomeDashboard = () => {
                     }}>Download Generated Files</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-4 gap-2">
                       <Button
                         variant="outline"
                         className="h-auto flex flex-col items-center gap-1.5 py-2.5 transition-all duration-300 hover:shadow-md"
@@ -2346,9 +2400,11 @@ const HomeDashboard = () => {
                           background: 'rgba(255, 255, 255, 0.8)',
                           borderColor: 'rgba(250, 129, 47, 0.3)'
                         }}
+                        onClick={() => policyDetails?.container?.policy_presigned_url && window.open(policyDetails.container.policy_presigned_url, '_blank')}
+                        disabled={!policyDetails?.container?.policy_presigned_url}
                       >
                         <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
-                        <span className="text-xs font-semibold">JAR File</span>
+                        <span className="text-xs font-semibold">PDF File</span>
                       </Button>
                       <Button
                         variant="outline"
@@ -2357,6 +2413,21 @@ const HomeDashboard = () => {
                           background: 'rgba(255, 255, 255, 0.8)',
                           borderColor: 'rgba(250, 129, 47, 0.3)'
                         }}
+                        onClick={() => policyDetails?.container?.excel_presigned_url && window.open(policyDetails.container.excel_presigned_url, '_blank')}
+                        disabled={!policyDetails?.container?.excel_presigned_url}
+                      >
+                        <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
+                        <span className="text-xs font-semibold">Excel File</span>
+                      </Button>
+                      <Button
+                        variant="outline"
+                        className="h-auto flex flex-col items-center gap-1.5 py-2.5 transition-all duration-300 hover:shadow-md"
+                        style={{
+                          background: 'rgba(255, 255, 255, 0.8)',
+                          borderColor: 'rgba(250, 129, 47, 0.3)'
+                        }}
+                        onClick={() => policyDetails?.container?.drl_presigned_url && window.open(policyDetails.container.drl_presigned_url, '_blank')}
+                        disabled={!policyDetails?.container?.drl_presigned_url}
                       >
                         <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
                         <span className="text-xs font-semibold">DRL File</span>
@@ -2368,9 +2439,11 @@ const HomeDashboard = () => {
                           background: 'rgba(255, 255, 255, 0.8)',
                           borderColor: 'rgba(250, 129, 47, 0.3)'
                         }}
+                        onClick={() => policyDetails?.container?.jar_presigned_url && window.open(policyDetails.container.jar_presigned_url, '_blank')}
+                        disabled={!policyDetails?.container?.jar_presigned_url}
                       >
                         <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
-                        <span className="text-xs font-semibold">Excel File</span>
+                        <span className="text-xs font-semibold">JAR File</span>
                       </Button>
                     </div>
                   </CardContent>
@@ -2572,18 +2645,6 @@ const HomeDashboard = () => {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Button
-                        onClick={addNewRuleNode}
-                        size="sm"
-                        className="shadow-md hover:shadow-lg transition-all duration-300"
-                        style={{
-                          background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)',
-                          border: 'none'
-                        }}
-                      >
-                        <Plus className="w-4 h-4 mr-1" />
-                        Add Rule Node
-                      </Button>
                       <div 
                         className="px-3 py-1.5 rounded-lg text-sm font-semibold"
                         style={{
@@ -3388,7 +3449,7 @@ const HomeDashboard = () => {
                         }}>Download Generated Files</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-4 gap-2">
                           <Button
                             variant="outline"
                             className="h-auto flex flex-col items-center gap-1.5 py-2.5 transition-all duration-300 hover:shadow-md"
@@ -3396,10 +3457,12 @@ const HomeDashboard = () => {
                               background: 'rgba(255, 255, 255, 0.8)',
                               borderColor: 'rgba(250, 129, 47, 0.3)'
                             }}
+                            onClick={() => processingOutput?.container?.policy_presigned_url && window.open(processingOutput.container.policy_presigned_url, '_blank')}
+                            disabled={!processingOutput?.container?.policy_presigned_url}
                           >
                             <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
                             <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                              JAR File
+                              PDF File
                             </span>
                           </Button>
                           <Button
@@ -3409,6 +3472,23 @@ const HomeDashboard = () => {
                               background: 'rgba(255, 255, 255, 0.8)',
                               borderColor: 'rgba(250, 129, 47, 0.3)'
                             }}
+                            onClick={() => processingOutput?.container?.excel_presigned_url && window.open(processingOutput.container.excel_presigned_url, '_blank')}
+                            disabled={!processingOutput?.container?.excel_presigned_url}
+                          >
+                            <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
+                            <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
+                              Excel File
+                            </span>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            className="h-auto flex flex-col items-center gap-1.5 py-2.5 transition-all duration-300 hover:shadow-md"
+                            style={{
+                              background: 'rgba(255, 255, 255, 0.8)',
+                              borderColor: 'rgba(250, 129, 47, 0.3)'
+                            }}
+                            onClick={() => processingOutput?.container?.drl_presigned_url && window.open(processingOutput.container.drl_presigned_url, '_blank')}
+                            disabled={!processingOutput?.container?.drl_presigned_url}
                           >
                             <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
                             <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
@@ -3422,15 +3502,94 @@ const HomeDashboard = () => {
                               background: 'rgba(255, 255, 255, 0.8)',
                               borderColor: 'rgba(250, 129, 47, 0.3)'
                             }}
+                            onClick={() => processingOutput?.container?.jar_presigned_url && window.open(processingOutput.container.jar_presigned_url, '_blank')}
+                            disabled={!processingOutput?.container?.jar_presigned_url}
                           >
                             <Download className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
                             <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                              Excel File
+                              JAR File
                             </span>
                           </Button>
                         </div>
                       </CardContent>
                     </Card>
+                  </div>
+                )}
+
+                {processingStatus === "error" && processingOutput && (
+                  <div className="space-y-6">
+                    {/* Error Header */}
+                    <div className="flex flex-col items-center justify-center py-8">
+                      <div className="w-16 h-16 rounded-full flex items-center justify-center mb-3 shadow-lg" style={{
+                        background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)'
+                      }}>
+                        <XCircle className="w-10 h-10 text-white" />
+                      </div>
+                      <p className="text-xl font-bold mb-1" style={{ 
+                        color: '#ef4444'
+                      }}>
+                        Processing Failed
+                      </p>
+                      <p className="text-sm font-medium" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                        An error occurred while processing your document
+                      </p>
+                    </div>
+
+                    {/* Error Details */}
+                    <Card className="border shadow-md" style={{
+                      background: 'linear-gradient(135deg, rgba(254, 226, 226, 0.5) 0%, rgba(254, 243, 226, 0.3) 100%)',
+                      borderColor: 'rgba(239, 68, 68, 0.3)'
+                    }}>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base font-bold flex items-center gap-2" style={{
+                          color: '#ef4444'
+                        }}>
+                          <AlertCircle className="w-5 h-5" />
+                          Error Details
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div>
+                          <p className="text-xs font-semibold mb-1" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Error Message</p>
+                          <p className="text-sm font-medium p-3 rounded" style={{ 
+                            background: 'rgba(239, 68, 68, 0.1)',
+                            color: '#ef4444'
+                          }}>
+                            {processingOutput.error}
+                          </p>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
+                          <div>
+                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank Name</p>
+                            <p className="text-sm font-semibold">{processingOutput.bankName}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>File Name</p>
+                            <p className="text-sm font-semibold">{processingOutput.fileName}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Failed At</p>
+                            <p className="text-sm font-semibold">{processingOutput.processedAt}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Retry Button */}
+                    <Button
+                      onClick={() => {
+                        setProcessingStatus("idle")
+                        setProcessingOutput(null)
+                      }}
+                      className="w-full h-12 shadow-lg hover:shadow-xl transition-all duration-300 font-semibold text-base"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(20, 96%, 50%) 100%)',
+                        border: 'none'
+                      }}
+                    >
+                      <ArrowRight className="w-5 h-5 mr-2 rotate-180" />
+                      Try Again
+                    </Button>
                   </div>
                 )}
               </div>

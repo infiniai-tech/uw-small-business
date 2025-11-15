@@ -77,23 +77,53 @@ export const uploadDocumentToS3 = async (file, folder = 'uploads') => {
  * @returns {Promise<Object>} - Processing result with extracted rules
  */
 export const processPolicyFromS3 = async ({ s3_url, policy_type, bank_id }) => {
-  const response = await fetch(buildApiUrl('/process_policy_from_s3'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      s3_url,
-      policy_type,
-      bank_id,
-    }),
-  });
+  const url = buildApiUrl('/process_policy_from_s3');
+  console.log('Processing policy from S3 - URL:', url);
+  console.log('Request params:', { s3_url, policy_type, bank_id });
 
-  if (!response.ok) {
-    throw new Error(`API request failed: ${response.statusText}`);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        s3_url,
+        policy_type,
+        bank_id,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Policy processing failed: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+      }
+      
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.statusText = response.statusText;
+      throw error;
+    }
+
+    return response.json();
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error(`Unable to connect to the API server. Please ensure the backend is running.`);
+    }
+    throw error;
   }
-
-  return response.json();
 };
 
 /**
