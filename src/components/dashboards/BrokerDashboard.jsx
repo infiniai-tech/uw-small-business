@@ -298,9 +298,9 @@ const BrokerDashboard = () => {
               </Select>
             </div>
 
-            {/* Bank ID Field */}
+            {/* Vendor ID Field */}
             <div className="space-y-2">
-              <Label htmlFor="bankId">Bank ID *</Label>
+              <Label htmlFor="bankId">Vendor ID *</Label>
               <Input
                 id="bankId"
                 value={formData.bankId}
@@ -555,7 +555,7 @@ const BrokerDashboard = () => {
               {/* Application Details */}
               <div className="grid grid-cols-2 gap-4 pt-4 border-t" style={{ borderColor: 'hsl(var(--color-border))' }}>
                 <div>
-                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank ID</p>
+                  <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Vendor ID</p>
                   <p className="font-medium">{decisionResult.bank_id}</p>
                 </div>
                 <div>

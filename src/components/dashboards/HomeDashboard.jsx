@@ -21,8 +21,10 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { FileCheck, BarChart3, Users, Shield, TrendingUp, LayoutDashboard, Building2, Plus, Search, Upload, X, Loader2, CheckCircle, AlertCircle, FileText, Download, Eye, Play, XCircle, Clock, Zap, ArrowRight, GitBranch, ChevronLeft, ChevronRight } from "lucide-react"
-import { getAllBanks, getBankPolicies, getPolicyDetails, getExtractedRules, evaluatePolicy, uploadDocumentToS3, processPolicyFromS3 } from "@/services/api"
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
+import { FileCheck, BarChart3, Users, Shield, TrendingUp, LayoutDashboard, Building2, Plus, Search, Upload, X, Loader2, CheckCircle, AlertCircle, FileText, Download, Eye, Play, XCircle, Clock, Zap, ArrowRight, GitBranch, ChevronLeft, ChevronRight, Edit } from "lucide-react"
+import { getAllBanks, getBankPolicies, getPolicyDetails, getExtractedRules, evaluatePolicy, uploadDocumentToS3, processPolicyFromS3, updateHierarchicalRules } from "@/services/api"
+import EditRuleModal from "@/components/EditRuleModal"
 
 // Custom Rule Node Component for the board
 const RuleNode = ({ data }) => {
@@ -63,9 +65,9 @@ const RuleNode = ({ data }) => {
       />
       {/* Node Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="flex items-center gap-2 flex-1">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
           <div 
-            className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0"
+            className="w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
             style={{
               background: data.passed ? 'linear-gradient(135deg, rgba(34, 197, 94, 0.2) 0%, rgba(34, 197, 94, 0.1) 100%)'
                 : (data.passed === false ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.2) 0%, rgba(239, 68, 68, 0.1) 100%)'
@@ -80,9 +82,11 @@ const RuleNode = ({ data }) => {
               <AlertCircle className="w-4 h-4" style={{ color: '#FA812F' }} />
             )}
           </div>
-          <p className="text-sm font-bold leading-tight flex-1" style={{ color: 'hsl(var(--color-foreground))' }}>
-            {data.label}
-          </p>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-bold leading-tight break-words" style={{ color: 'hsl(var(--color-foreground))' }}>
+              {data.label || data.name || data.rule_name || 'Rule'}
+            </p>
+          </div>
         </div>
         {data.passed !== undefined && (
           <span 
@@ -195,7 +199,7 @@ const HomeDashboard = () => {
   const [showCloseConfirmation, setShowCloseConfirmation] = React.useState(false)
 
   // Recursive component to render rule dependencies as a tree
-  const RuleDependency = ({ dep, depth = 1, isLast = false }) => {
+  const RuleDependency = ({ dep, depth = 1, isLast = false, onEdit }) => {
     const maxDepth = 5
     const depthColors = [
       '#9333ea', // Purple
@@ -235,7 +239,7 @@ const HomeDashboard = () => {
             className="absolute left-[-3px] top-2.5 w-2 h-2 rounded-full border-2"
             style={{
               borderColor: lineColor,
-              background: dep.passed ? '#22c55e' : '#ef4444'
+              background: lineColor
             }}
           />
         </div>
@@ -246,7 +250,7 @@ const HomeDashboard = () => {
             className="p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md"
             style={{
               background: 'rgba(255, 255, 255, 0.8)',
-              borderColor: dep.passed ? 'rgba(34, 197, 94, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+              borderColor: 'rgba(250, 129, 47, 0.15)',
               borderLeftWidth: '3px',
               borderLeftColor: lineColor
             }}
@@ -254,36 +258,24 @@ const HomeDashboard = () => {
             {/* Header */}
             <div className="flex items-start gap-2 mb-1.5">
               <div className="flex-1">
-                <div className="flex items-center gap-2 justify-between mb-0.5">
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-xs font-bold leading-tight" style={{ color: 'hsl(var(--color-foreground))' }}>
-                      {dep.name}
-                    </p>
-                    {dep.dependencies && dep.dependencies.length > 0 && (
-                      <div 
-                        className="flex items-center gap-0.5 px-1.5 py-0.5 rounded"
-                        style={{
-                          background: `${lineColor}15`,
-                          color: lineColor,
-                          fontSize: '10px',
-                          fontWeight: 600
-                        }}
-                      >
-                        <GitBranch className="w-2.5 h-2.5" />
-                        {dep.dependencies.length}
-                      </div>
-                    )}
-                  </div>
-                  <span 
-                    className="px-2 py-0.5 rounded font-bold"
-                    style={{
-                      background: dep.passed ? '#22c55e' : '#ef4444',
-                      color: 'white',
-                      fontSize: '10px'
-                    }}
-                  >
-                    {dep.passed ? 'PASS' : 'FAIL'}
-                  </span>
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <p className="text-xs font-bold leading-tight" style={{ color: 'hsl(var(--color-foreground))' }}>
+                    {dep.name}
+                  </p>
+                  {dep.dependencies && dep.dependencies.length > 0 && (
+                    <div 
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded"
+                      style={{
+                        background: `${lineColor}10`,
+                        border: `1px solid ${lineColor}30`,
+                        fontSize: '10px',
+                        fontWeight: 600
+                      }}
+                    >
+                      <GitBranch className="w-2.5 h-2.5" style={{ color: lineColor }} />
+                      <span style={{ color: lineColor }}>{dep.dependencies.length}</span>
+                    </div>
+                  )}
                 </div>
                 <p className="text-xs leading-tight" style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '11px' }}>
                   {dep.description}
@@ -292,26 +284,36 @@ const HomeDashboard = () => {
             </div>
 
             {/* Values */}
-            <div className="flex items-center gap-2 mb-1.5">
-              <div className="flex items-center gap-1 text-xs">
-                <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px' }}>Expected:</span>
-                <span className="font-bold font-mono" style={{ color: 'hsl(var(--color-primary))', fontSize: '11px' }}>
-                  {dep.expected}
-                </span>
+            <div className="flex items-center gap-3 mb-1.5">
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px', fontWeight: '600' }}>Expected:</span>
+                  <span className="font-bold font-mono" style={{ color: 'hsl(var(--color-foreground))', fontSize: '11px' }}>
+                    {dep.expected}
+                  </span>
+                </div>
               </div>
-              <div className="w-px h-3 bg-gray-300" />
-              <div className="flex items-center gap-1 text-xs">
-                <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px' }}>Actual:</span>
-                <span className="font-bold font-mono" style={{ color: dep.passed ? '#22c55e' : '#ef4444', fontSize: '11px' }}>
-                  {dep.actual}
-                </span>
-              </div>
-              <div className="w-px h-3 bg-gray-300" />
-              <div className="flex items-center gap-1 text-xs">
-                <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px' }}>Confidence:</span>
-                <span className="font-bold" style={{ color: 'hsl(var(--color-primary))', fontSize: '11px' }}>
-                  {(dep.confidence * 100).toFixed(0)}%
-                </span>
+              <div className="flex items-center gap-2 text-xs shrink-0">
+                <div className="flex items-center gap-1.5">
+                  <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px', fontWeight: '600' }}>Confidence:</span>
+                  <span className="font-bold" style={{ color: 'hsl(var(--color-primary))', fontSize: '11px' }}>
+                    {(dep.confidence * 100).toFixed(0)}%
+                  </span>
+                </div>
+                {onEdit && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-5 w-5 p-0 hover:bg-orange-100 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onEdit(dep)
+                    }}
+                    title="Edit rule"
+                  >
+                    <Edit className="w-3 h-3" style={{ color: 'hsl(var(--color-primary))' }} />
+                  </Button>
+                )}
               </div>
             </div>
           </div>
@@ -325,6 +327,7 @@ const HomeDashboard = () => {
                   dep={nestedDep} 
                   depth={depth + 1}
                   isLast={index === dep.dependencies.length - 1}
+                  onEdit={onEdit}
                 />
               ))}
             </div>
@@ -367,8 +370,8 @@ const HomeDashboard = () => {
     ]
   }
 
-  // Test examples
-  const testExamples = {
+  // Default test examples (fallback)
+  const defaultTestExamples = {
     approved: {
       name: "Insurance Application (Approved)",
       request: {
@@ -436,7 +439,7 @@ const HomeDashboard = () => {
     },
     {
       id: "bank-management",
-      label: "Bank Management",
+      label: "Vendor Management",
       icon: Building2
     }
   ]
@@ -1168,14 +1171,19 @@ const HomeDashboard = () => {
     const processRule = (rule, xOffset = 0, parentId = null, level = 0) => {
       const nodeId = `rule-${rule.id}`
       
+      // Extract rule name from various possible fields (prioritize rule_name to match extracted rules format)
+      const ruleName = rule.rule_name || rule.name || rule.label || `Rule ${rule.id || ''}`
+      
       // Add main rule node
       nodes.push({
         id: nodeId,
         type: 'ruleNode',
         position: { x: xOffset, y: yPosition },
         data: {
-          label: rule.name,
-          description: rule.description,
+          label: ruleName,
+          name: ruleName,
+          rule_name: ruleName,
+          description: rule.description || rule.requirement,
           expected: rule.expected,
           actual: rule.actual,
           confidence: rule.confidence,
@@ -1308,13 +1316,13 @@ const HomeDashboard = () => {
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text'
-            }}>Select Bank & Policy</CardTitle>
+            }}>Select Vendor & Policy</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div className="space-y-2">
                 <Label className="text-sm font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                  Bank
+                  Vendor
                 </Label>
                 <Select value={selectedBankForTest} onValueChange={setSelectedBankForTest}>
                   <SelectTrigger 
@@ -1384,7 +1392,7 @@ const HomeDashboard = () => {
                     </SelectTrigger>
                     <SelectContent>
                       {Object.entries(testExamples).map(([key, example]) => (
-                        <SelectItem key={key} value={key}>{example.label}</SelectItem>
+                        <SelectItem key={key} value={key}>{example.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -1628,16 +1636,16 @@ const HomeDashboard = () => {
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text'
-          }}>Bank Management</h2>
+          }}>Vendor Management</h2>
           <p className="text-base" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-            Manage banks and their associated policies
+            Manage vendors and their associated policies
           </p>
         </div>
         <div className="flex items-center gap-3">
           <div className="relative" style={{ width: '300px' }}>
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5" style={{ color: 'hsl(var(--color-muted-foreground))' }} />
             <Input
-              placeholder="Search banks..."
+              placeholder="Search vendors..."
               className="pl-10 pr-4 h-11 text-base shadow-md"
               style={{
                 background: 'rgba(255, 250, 240, 0.95)',
@@ -1655,7 +1663,7 @@ const HomeDashboard = () => {
             }}
           >
             <Plus className="w-4 h-4 mr-2" />
-            Add Bank
+            Add Vendor
           </Button>
         </div>
       </div>
@@ -1671,12 +1679,12 @@ const HomeDashboard = () => {
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
-              <CardTitle className="text-2xl font-bold">Banks</CardTitle>
-              <CardDescription className="text-base">List of all registered banks and their policy counts</CardDescription>
+              <CardTitle className="text-2xl font-bold">Vendors</CardTitle>
+              <CardDescription className="text-base">List of all registered vendors and their policy counts</CardDescription>
             </div>
             {banks.length > 0 && !isLoadingBanks && !banksError && (
               <Badge variant="secondary" className="text-sm font-semibold">
-                {banks.length} {banks.length === 1 ? 'bank' : 'banks'}
+                {banks.length} {banks.length === 1 ? 'vendor' : 'vendors'}
               </Badge>
             )}
           </div>
@@ -1694,8 +1702,8 @@ const HomeDashboard = () => {
                 <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Bank ID</TableHead>
-                <TableHead>Bank Name</TableHead>
+                <TableHead>Vendor ID</TableHead>
+                <TableHead>Vendor Name</TableHead>
                 <TableHead>Policies</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Last Updated</TableHead>
@@ -1759,10 +1767,11 @@ const HomeDashboard = () => {
                 paginatedBanks.map((bank, index) => (
                   <TableRow 
                     key={bank.id}
-                    className="transition-all duration-200 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50"
+                    className="transition-all duration-200 hover:bg-gradient-to-r hover:from-orange-50 hover:to-amber-50 cursor-pointer"
                     style={{
                       borderBottom: index !== paginatedBanks.length - 1 ? '1px solid hsl(var(--color-border))' : 'none'
                     }}
+                    onClick={() => handleViewBank(bank)}
                   >
                     <TableCell className="font-semibold font-mono text-sm" style={{ color: 'hsl(var(--color-primary))' }}>
                       {bank.id}
@@ -1801,8 +1810,11 @@ const HomeDashboard = () => {
                         <Button 
                           variant="ghost" 
                           size="sm"
-                          className="hover:bg-orange-50 transition-all duration-200"
-                          onClick={() => handleViewBank(bank)}
+                          className="hover:bg-orange-50 transition-all duration-200 cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            handleViewBank(bank)
+                          }}
                         >
                           <Eye className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
                         </Button>
@@ -1912,8 +1924,85 @@ const HomeDashboard = () => {
     const [isLoadingPolicies, setIsLoadingPolicies] = React.useState(false)
     const [policyDetails, setPolicyDetails] = React.useState(null)
     const [extractedRules, setExtractedRules] = React.useState([])
+    const [hierarchicalRules, setHierarchicalRules] = React.useState([])
+    const [testExamples, setTestExamples] = React.useState(defaultTestExamples)
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(false)
     const [detailsError, setDetailsError] = React.useState(null)
+    
+    // State for edit rule modal
+    const [isEditModalOpen, setIsEditModalOpen] = React.useState(false)
+    const [selectedRuleForEdit, setSelectedRuleForEdit] = React.useState(null)
+    const [isUpdatingRule, setIsUpdatingRule] = React.useState(false)
+    const [updateSuccess, setUpdateSuccess] = React.useState(false)
+    const [updateError, setUpdateError] = React.useState(null)
+
+    // Handler to open edit modal
+    const handleEditRule = (rule) => {
+      setSelectedRuleForEdit(rule)
+      setIsEditModalOpen(true)
+      setUpdateSuccess(false)
+      setUpdateError(null)
+    }
+
+    // Handler to close edit modal
+    const handleCloseEditModal = () => {
+      setIsEditModalOpen(false)
+      setSelectedRuleForEdit(null)
+      setUpdateError(null)
+    }
+
+    // Handler to save rule updates
+    const handleSaveRuleUpdate = async (updateData) => {
+      if (!selectedBank || !selectedPolicy) {
+        setUpdateError('Missing bank or policy information')
+        return
+      }
+
+      setIsUpdatingRule(true)
+      setUpdateError(null)
+      
+      try {
+        // Call the API to update hierarchical rules
+        const response = await updateHierarchicalRules({
+          bank_id: selectedBank.id,
+          policy_type: selectedPolicy,
+          updates: [updateData]
+        })
+        
+        console.log('Rule update response:', response)
+        
+        // Show success state
+        setUpdateSuccess(true)
+        
+        // Update the local rules list
+        setExtractedRules(prevRules => 
+          prevRules.map(rule => 
+            rule.id === updateData.rule_id 
+              ? { 
+                  ...rule, 
+                  name: updateData.name || rule.name,
+                  description: updateData.description || rule.description,
+                  confidence: updateData.confidence,
+                  expected: updateData.expected,
+                  actual: updateData.actual,
+                  passed: updateData.passed
+                }
+              : rule
+          )
+        )
+        
+        // Close modal after a short delay
+        setTimeout(() => {
+          handleCloseEditModal()
+          setUpdateSuccess(false)
+        }, 1500)
+      } catch (error) {
+        console.error('Failed to update rule:', error)
+        setUpdateError(error.message || 'Failed to update rule')
+      } finally {
+        setIsUpdatingRule(false)
+      }
+    }
 
     // Fetch policies when bank is selected
     React.useEffect(() => {
@@ -1957,6 +2046,8 @@ const HomeDashboard = () => {
       if (!selectedBank || !selectedPolicy) {
         setPolicyDetails(null)
         setExtractedRules([])
+        setHierarchicalRules([])
+        setTestExamples(defaultTestExamples)
         return
       }
 
@@ -1971,7 +2062,10 @@ const HomeDashboard = () => {
 
           // Fetch extracted rules
           const rulesResponse = await getExtractedRules(selectedBank.id, selectedPolicy)
-          console.log('Extracted Rules Response:', rulesResponse)
+          console.log('=== LEFT SECTION: EXTRACTED RULES ===')
+          console.log('API Endpoint: GET /api/v1/extracted-rules')
+          console.log('Full API Response:', rulesResponse)
+          console.log('Raw Rules Array:', rulesResponse.rules || rulesResponse.data || [])
           
           // Transform rules to match expected format
           const rules = rulesResponse.rules || rulesResponse.data || []
@@ -1980,15 +2074,79 @@ const HomeDashboard = () => {
             name: rule.rule_name || rule.field || `Rule ${index + 1}`,
             description: rule.description || rule.requirement || `${rule.field} ${rule.operator} ${rule.value}`,
             status: rule.is_active !== false ? "Active" : "Inactive",
-            confidence: rule.confidence || rule.confidence_score || 0.9
+            confidence: rule.confidence || rule.confidence_score || 0.9,
+            category: rule.category || "General"
           }))
           
+          // Extract hierarchical rules from policy details response (preserve full structure with dependencies)
+          const hierarchicalRulesData = detailsResponse.hierarchical_rules || detailsResponse.data?.hierarchical_rules || []
+          console.log('Hierarchical Rules from Policy Details:', hierarchicalRulesData)
+          
+          // Extract and construct test cases from policy details
+          const testCasesData = detailsResponse.test_cases || detailsResponse.data?.test_cases || []
+          console.log('Test Cases from Policy Details:', testCasesData)
+          
+          // Build dynamic test examples from test_cases
+          if (testCasesData && testCasesData.length > 0) {
+            const dynamicTestExamples = {}
+            testCasesData.forEach((testCase, index) => {
+              const key = testCase.test_case_id || testCase.id || `test_${index}`
+              
+              // Extract data from test case (could be in input_data or directly in testCase)
+              const tcData = testCase.input_data || testCase
+              
+              // Map test case data to the expected request structure
+              const requestBody = {
+                bank_id: tcData.bank_id || selectedBank?.id || "chase",
+                policy_type: tcData.policy_type || selectedPolicy || "insurance",
+                applicant: {
+                  age: tcData.applicant?.age || tcData.age || 35,
+                  annualIncome: tcData.applicant?.annualIncome || tcData.annualIncome || tcData.annual_income || 75000,
+                  creditScore: tcData.applicant?.creditScore || tcData.creditScore || tcData.credit_score || 720,
+                  healthConditions: tcData.applicant?.healthConditions || tcData.healthConditions || tcData.health_conditions || "good",
+                  smoker: tcData.applicant?.smoker !== undefined ? tcData.applicant.smoker : (tcData.smoker !== undefined ? tcData.smoker : false)
+                },
+                policy: {
+                  coverageAmount: tcData.policy?.coverageAmount || tcData.coverageAmount || tcData.coverage_amount || 500000,
+                  termYears: tcData.policy?.termYears || tcData.termYears || tcData.term_years || tcData.term || 20,
+                  type: tcData.policy?.type || tcData.policyType || tcData.policy_type || tcData.type || "term_life"
+                }
+              }
+              
+              dynamicTestExamples[key] = {
+                name: testCase.name || testCase.description || `Test Case ${index + 1}`,
+                request: requestBody
+              }
+            })
+            console.log('Dynamic Test Examples:', dynamicTestExamples)
+            setTestExamples(dynamicTestExamples)
+            
+            // Set first test example as default selection if current selection doesn't exist
+            const firstKey = Object.keys(dynamicTestExamples)[0]
+            if (firstKey) {
+              setTestExample(firstKey)
+            }
+          } else {
+            // Fallback to default test examples if no test cases from API
+            setTestExamples(defaultTestExamples)
+            setTestExample('approved')
+          }
+          
+          console.log('Transformed Rules for Display:', transformedRules)
+          console.log('Hierarchical Rules with Dependencies:', hierarchicalRulesData)
+          console.log('Total Extracted Rules Count:', transformedRules.length)
+          console.log('Total Hierarchical Rules Count:', hierarchicalRulesData.length)
+          console.log('====================================')
+          
           setExtractedRules(transformedRules)
+          setHierarchicalRules(hierarchicalRulesData)
         } catch (error) {
           console.error('Failed to fetch policy details:', error)
           setDetailsError(error.message || 'Failed to load policy details')
           setPolicyDetails(null)
           setExtractedRules([])
+          setHierarchicalRules([])
+          setTestExamples(defaultTestExamples)
         } finally {
           setIsLoadingDetails(false)
         }
@@ -2010,15 +2168,15 @@ const HomeDashboard = () => {
     // Create dynamic request body with selected bank and policy
     const getDynamicRequestBody = () => {
       const exampleRequest = testExamples[testExample]?.request
-      if (!exampleRequest || !selectedBank || !selectedPolicy) {
-        return exampleRequest || {}
+      if (!exampleRequest) {
+        return {}
       }
       
-      // Merge the example request with dynamic bank_id and policy_type
+      // Always use the currently selected bank and policy
       return {
         ...exampleRequest,
-        bank_id: selectedBank.id,
-        policy_type: selectedPolicy
+        bank_id: selectedBank?.id || exampleRequest.bank_id,
+        policy_type: selectedPolicy || exampleRequest.policy_type
       }
     }
 
@@ -2034,10 +2192,15 @@ const HomeDashboard = () => {
       
       try {
         const requestBody = getDynamicRequestBody()
-        console.log('Executing test with request:', requestBody)
+        console.log('=== RIGHT SECTION: RULES BOARD (EXECUTE TEST) ===')
+        console.log('API Endpoint: POST /api/v1/evaluate-policy')
+        console.log('Request Body:', requestBody)
         
         const response = await evaluatePolicy(requestBody)
-        console.log('API Response:', response)
+        console.log('Full API Response:', response)
+        console.log('Hierarchical Rules from Response:', response.hierarchical_rules || [])
+        console.log('Rule Evaluation Summary:', response.rule_evaluation_summary || {})
+        console.log('Decision:', response.decision)
         
         // Transform API response to match UI format
         // Use hierarchical_rules and rule_evaluation_summary from the new API response
@@ -2054,6 +2217,10 @@ const HomeDashboard = () => {
             : null,
           rules: response.hierarchical_rules || []
         }
+        
+        console.log('Transformed Response for Rules Board:', transformedResponse)
+        console.log('Rules Count for Visualization:', transformedResponse.rules.length)
+        console.log('================================================')
         
         setTestResponse(transformedResponse)
       } catch (error) {
@@ -2102,6 +2269,7 @@ const HomeDashboard = () => {
     }, [setNodes])
 
     return (
+      <>
       <div className="space-y-6">
         {/* Header with Back Button */}
         <div className="flex items-center justify-between p-6 rounded-2xl" style={{
@@ -2112,10 +2280,10 @@ const HomeDashboard = () => {
             <Button
               variant="ghost"
               onClick={() => setActiveSection("bank-management")}
-              className="hover:bg-orange-50"
+              className="hover:bg-orange-50 cursor-pointer"
             >
               <ArrowRight className="w-5 h-5 mr-2 transform rotate-180" style={{ color: 'hsl(var(--color-primary))' }} />
-              Back to Banks
+              Back to Vendors
             </Button>
             <div>
               <h2 className="text-3xl font-bold mb-2" style={{
@@ -2247,7 +2415,7 @@ const HomeDashboard = () => {
                   <CardContent className="space-y-3">
                     <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                       <div>
-                        <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank ID</p>
+                        <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Vendor ID</p>
                         <p className="text-sm font-mono font-semibold" style={{ color: 'hsl(var(--color-primary))' }}>
                           {selectedBank.id}
                         </p>
@@ -2285,19 +2453,50 @@ const HomeDashboard = () => {
                   </CardContent>
                 </Card>
 
-                {/* Extracted Rules */}
+                {/* Extracted Rules - Hidden */}
+                {false && (
                 <Card className="border shadow-md" style={{
                   background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.95) 0%, rgba(254, 243, 226, 0.8) 100%)',
                   borderColor: 'rgba(250, 129, 47, 0.2)'
                 }}>
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base font-bold" style={{
-                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                        backgroundClip: 'text'
-                      }}>Extracted Rules</CardTitle>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-base font-bold" style={{
+                          background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                          WebkitBackgroundClip: 'text',
+                          WebkitTextFillColor: 'transparent',
+                          backgroundClip: 'text'
+                        }}>Extracted Rules</CardTitle>
+                        {extractedRules.length > 0 && (() => {
+                          // Get the most common category
+                          const categoryCounts = {}
+                          extractedRules.forEach(rule => {
+                            const cat = rule.category || 'General'
+                            categoryCounts[cat] = (categoryCounts[cat] || 0) + 1
+                          })
+                          const categories = Object.keys(categoryCounts)
+                          if (categories.length === 0) return null
+                          
+                          const mostCommonCategory = categories.reduce((a, b) => 
+                            categoryCounts[a] > categoryCounts[b] ? a : b
+                          )
+                          
+                          return mostCommonCategory ? (
+                            <Badge 
+                              variant="outline" 
+                              className="text-xs font-semibold"
+                              style={{
+                                background: 'rgba(250, 129, 47, 0.1)',
+                                borderColor: 'rgba(250, 129, 47, 0.3)',
+                                color: 'hsl(var(--color-primary))'
+                              }}
+                            >
+                              {mostCommonCategory}
+                            </Badge>
+                          ) : null
+                        })()}
+                      </div>
                       <Badge className="font-semibold" style={{
                         background: 'linear-gradient(135deg, hsl(var(--color-secondary)) 0%, hsl(42, 96%, 50%) 100%)',
                         border: 'none'
@@ -2336,20 +2535,46 @@ const HomeDashboard = () => {
                           }}
                         >
                           <div className="flex items-start justify-between gap-2 mb-1">
-                            <p className="text-sm font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                              {index + 1}. {rule.name}
-                            </p>
-                            <Badge 
-                              variant="outline" 
-                              className="text-xs font-semibold shrink-0"
-                              style={{
-                                background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)',
-                                borderColor: 'rgba(34, 197, 94, 0.3)',
-                                color: 'hsl(var(--color-success))'
-                              }}
-                            >
-                              {rule.status}
-                            </Badge>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-bold mb-1" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                {index + 1}. {rule.name}
+                              </p>
+                              {rule.category && (
+                                <Badge 
+                                  variant="outline" 
+                                  className="text-xs font-medium"
+                                  style={{
+                                    background: 'rgba(250, 129, 47, 0.08)',
+                                    borderColor: 'rgba(250, 129, 47, 0.25)',
+                                    color: 'hsl(var(--color-primary))'
+                                  }}
+                                >
+                                  {rule.category}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <Badge 
+                                variant="outline" 
+                                className="text-xs font-semibold"
+                                style={{
+                                  background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)',
+                                  borderColor: 'rgba(34, 197, 94, 0.3)',
+                                  color: 'hsl(var(--color-success))'
+                                }}
+                              >
+                                {rule.status}
+                              </Badge>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="h-6 w-6 p-0 hover:bg-orange-100 transition-colors"
+                                onClick={() => handleEditRule(rule)}
+                                title="Edit rule"
+                              >
+                                <Edit className="w-3.5 h-3.5" style={{ color: 'hsl(var(--color-primary))' }} />
+                              </Button>
+                            </div>
                           </div>
                           <p className="text-xs mb-2" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
                             {rule.description}
@@ -2377,6 +2602,155 @@ const HomeDashboard = () => {
                     )}
                   </CardContent>
                 </Card>
+                )}
+
+                {/* Hierarchical Rules */}
+                {hierarchicalRules.length > 0 && (
+                  <Card className="border shadow-md" style={{
+                    background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.95) 0%, rgba(254, 243, 226, 0.8) 100%)',
+                    borderColor: 'rgba(250, 129, 47, 0.2)'
+                  }}>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CardTitle className="text-base font-bold" style={{
+                            background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text'
+                          }}>Hierarchical Rules</CardTitle>
+                          <Badge 
+                            variant="outline" 
+                            className="text-xs font-semibold"
+                            style={{
+                              background: 'rgba(147, 51, 234, 0.1)',
+                              borderColor: 'rgba(147, 51, 234, 0.3)',
+                              color: '#9333ea'
+                            }}
+                          >
+                            Multi-Level
+                          </Badge>
+                        </div>
+                        <Badge className="font-semibold" style={{
+                          background: 'linear-gradient(135deg, hsl(var(--color-secondary)) 0%, hsl(42, 96%, 50%) 100%)',
+                          border: 'none'
+                        }}>
+                          {hierarchicalRules.length} rules
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="max-h-[500px] overflow-y-auto pr-2">
+                        <Accordion type="multiple" className="w-full space-y-2">
+                          {hierarchicalRules.map((rule, index) => (
+                            <AccordionItem 
+                              key={rule.id || index} 
+                              value={`rule-${rule.id || index}`}
+                              className="border rounded-lg transition-all duration-300 hover:shadow-md"
+                              style={{
+                                background: 'rgba(255, 255, 255, 0.6)',
+                                borderColor: 'rgba(250, 129, 47, 0.15)'
+                              }}
+                            >
+                              <AccordionTrigger className="px-4 py-3 hover:no-underline">
+                                <div className="flex items-start justify-between w-full pr-2">
+                                  <div className="flex-1 text-left">
+                                    <div className="flex items-center gap-2 mb-1.5">
+                                      <span className="text-sm font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                        {rule.id}. {rule.name}
+                                      </span>
+                                      {rule.dependencies && rule.dependencies.length > 0 && (
+                                        <div 
+                                          className="flex items-center gap-1 px-2 py-0.5 rounded-md"
+                                          style={{
+                                            background: 'rgba(147, 51, 234, 0.08)',
+                                            border: '1px solid rgba(147, 51, 234, 0.2)'
+                                          }}
+                                        >
+                                          <GitBranch className="w-3 h-3" style={{ color: '#9333ea' }} />
+                                          <span className="text-xs font-semibold" style={{ color: '#9333ea' }}>
+                                            {rule.dependencies.length}
+                                          </span>
+                                        </div>
+                                      )}
+                                    </div>
+                                    <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                      {rule.description}
+                                    </p>
+                                  </div>
+                                  <div className="flex items-center gap-2 ml-2">
+                                    <div className="flex items-center gap-1">
+                                      <span className="text-xs" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                        Confidence:
+                                      </span>
+                                      <span className="text-xs font-bold" style={{ color: 'hsl(var(--color-primary))' }}>
+                                        {(rule.confidence * 100).toFixed(0)}%
+                                      </span>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-6 w-6 p-0 hover:bg-orange-100 transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleEditRule(rule)
+                                      }}
+                                      title="Edit rule"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" style={{ color: 'hsl(var(--color-primary))' }} />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="px-4 pb-3">
+                                <div className="space-y-3 mt-2">
+                                  {/* Rule Details */}
+                                  {rule.expected && (
+                                    <div className="p-3 rounded-lg" style={{
+                                      background: 'rgba(250, 129, 47, 0.05)',
+                                      border: '1px solid rgba(250, 129, 47, 0.1)'
+                                    }}>
+                                      <p className="text-xs font-semibold mb-2" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                        Expected Condition
+                                      </p>
+                                      <p className="text-sm font-mono leading-relaxed" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                        {rule.expected}
+                                      </p>
+                                    </div>
+                                  )}
+
+                                  {/* Dependencies */}
+                                  {rule.dependencies && rule.dependencies.length > 0 && (
+                                    <div>
+                                      <div className="flex items-center gap-2 mb-3">
+                                        <GitBranch className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
+                                        <p className="text-xs font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                          Dependencies ({rule.dependencies.length})
+                                        </p>
+                                      </div>
+                                      <div className="space-y-2 pl-2">
+                                        {rule.dependencies.map((dep, depIndex) => (
+                                          <div key={dep.id || depIndex}>
+                                            <RuleDependency 
+                                              dep={dep} 
+                                              depth={1} 
+                                              isLast={depIndex === rule.dependencies.length - 1}
+                                              onEdit={handleEditRule}
+                                            />
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </AccordionContent>
+                            </AccordionItem>
+                          ))}
+                        </Accordion>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Download Files */}
                 <Card className="border shadow-md" style={{
@@ -2707,6 +3081,46 @@ const HomeDashboard = () => {
           )}
         </div>
       </div>
+      
+      {/* Edit Rule Modal */}
+      <EditRuleModal
+        isOpen={isEditModalOpen}
+        onClose={handleCloseEditModal}
+        rule={selectedRuleForEdit}
+        onSave={handleSaveRuleUpdate}
+        isLoading={isUpdatingRule}
+      />
+      
+      {/* Success/Error Notification */}
+      {updateSuccess && (
+        <div 
+          className="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg flex items-center gap-3 z-50 animate-slide-in"
+          style={{
+            background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.95) 0%, rgba(34, 197, 94, 0.85) 100%)',
+            color: 'white'
+          }}
+        >
+          <CheckCircle className="w-5 h-5" />
+          <span className="font-semibold">Rule updated successfully!</span>
+        </div>
+      )}
+      
+      {updateError && (
+        <div 
+          className="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg flex items-center gap-3 z-50"
+          style={{
+            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.95) 0%, rgba(239, 68, 68, 0.85) 100%)',
+            color: 'white'
+          }}
+        >
+          <AlertCircle className="w-5 h-5" />
+          <div>
+            <p className="font-semibold">Failed to update rule</p>
+            <p className="text-sm">{updateError}</p>
+          </div>
+        </div>
+      )}
+      </>
     )
   }
 
@@ -2803,7 +3217,7 @@ const HomeDashboard = () => {
         </div>
       </div>
 
-      {/* Add Bank Modal */}
+      {/* Add Vendor Modal */}
       <Dialog 
         open={isAddBankModalOpen} 
         onOpenChange={(open) => {
@@ -2837,10 +3251,10 @@ const HomeDashboard = () => {
                     backgroundClip: 'text'
                   }}
                 >
-                  Add New Bank
+                  Add New Vendor
                 </DialogTitle>
                 <DialogDescription className="text-base font-medium mt-1" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-                  Upload policy document and configure bank details
+                  Upload policy document and configure vendor details
                 </DialogDescription>
               </div>
               <button
@@ -2934,15 +3348,15 @@ const HomeDashboard = () => {
                   </Select>
                 </div>
 
-                {/* Bank Name */}
+                {/* Vendor Name */}
                 <div className="space-y-2">
                   <Label htmlFor="bank-name" className="text-base font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                    Bank Name <span className="text-red-500">*</span>
+                    Vendor Name <span className="text-red-500">*</span>
                   </Label>
                   <Input
                     id="bank-name"
                     type="text"
-                    placeholder="e.g., Chase Bank, Wells Fargo"
+                    placeholder="e.g., Chase Vendor, Wells Fargo"
                     value={bankName}
                     onChange={handleBankNameChange}
                     className="h-11 text-base"
@@ -3314,7 +3728,7 @@ const HomeDashboard = () => {
                       </p>
                     </div>
 
-                    {/* Bank Details */}
+                    {/* Vendor Details */}
                     <Card className="border shadow-md" style={{
                       background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.95) 0%, rgba(254, 243, 226, 0.8) 100%)',
                       borderColor: 'rgba(250, 129, 47, 0.2)'
@@ -3325,18 +3739,18 @@ const HomeDashboard = () => {
                           WebkitBackgroundClip: 'text',
                           WebkitTextFillColor: 'transparent',
                           backgroundClip: 'text'
-                        }}>Bank Details</CardTitle>
+                        }}>Vendor Details</CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="grid grid-cols-2 gap-x-4 gap-y-3">
                           <div>
-                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank ID</p>
+                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Vendor ID</p>
                             <p className="text-sm font-mono font-semibold" style={{ color: 'hsl(var(--color-primary))' }}>
                               {processingOutput.bankId}
                             </p>
                           </div>
                           <div>
-                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank Name</p>
+                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Vendor Name</p>
                             <p className="text-sm font-semibold">{processingOutput.bankName}</p>
                           </div>
                           <div>
@@ -3560,7 +3974,7 @@ const HomeDashboard = () => {
                         </div>
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t" style={{ borderColor: 'rgba(239, 68, 68, 0.2)' }}>
                           <div>
-                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Bank Name</p>
+                            <p className="text-xs font-semibold mb-0.5" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Vendor Name</p>
                             <p className="text-sm font-semibold">{processingOutput.bankName}</p>
                           </div>
                           <div>

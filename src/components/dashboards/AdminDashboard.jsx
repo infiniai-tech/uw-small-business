@@ -367,7 +367,7 @@ const QuickTestResultsView = ({ result, policyType, bankId }) => {
             Final Decision: {result?.decision?.approved ? "APPROVED" : "REJECTED"}
           </CardTitle>
           <CardDescription>
-            Bank: <strong>{bankId}</strong> | Policy Type: <strong>{policyType}</strong> | 
+            Vendor: <strong>{bankId}</strong> | Policy Type: <strong>{policyType}</strong> | 
             Execution Time: <strong>{result?.execution_time_ms || 0}ms</strong>
           </CardDescription>
         </CardHeader>
@@ -1031,7 +1031,7 @@ const AdminDashboard = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="bank-id">Bank ID <span className="text-red-500">*</span></Label>
+                  <Label htmlFor="bank-id">Vendor ID <span className="text-red-500">*</span></Label>
                   <Input
                     id="bank-id"
                     type="text"
@@ -1136,7 +1136,7 @@ const AdminDashboard = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="test-bank-id">Bank ID</Label>
+                <Label htmlFor="test-bank-id">Vendor ID</Label>
                 <Input
                   id="test-bank-id"
                   type="text"
@@ -1487,7 +1487,7 @@ const AdminDashboard = () => {
                   <p className="text-sm">{processingResults.policy_type}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Bank ID</p>
+                  <p className="text-sm font-medium">Vendor ID</p>
                   <p className="text-sm">{processingResults.bank_id}</p>
                 </div>
               </div>
@@ -1700,10 +1700,10 @@ const AdminDashboard = () => {
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="view-bank">Select Bank</Label>
+                    <Label htmlFor="view-bank">Select Vendor</Label>
                     <Select value={selectedBank} onValueChange={handleBankChange} disabled={isLoadingBanks}>
                       <SelectTrigger id="view-bank">
-                        <SelectValue placeholder={isLoadingBanks ? "Loading banks..." : "Choose a bank"} />
+                        <SelectValue placeholder={isLoadingBanks ? "Loading vendors..." : "Choose a vendor"} />
                       </SelectTrigger>
                       <SelectContent>
                         {banks.map((bank) => (

@@ -421,18 +421,19 @@ export const getBankPolicies = async (bank_id) => {
 };
 
 /**
- * Get specific policy details - GET /api/v1/policies?bank_id={}&policy_type={}&include_queries=true&include_rules=true
+ * Get specific policy details - GET /api/v1/policies?bank_id={}&policy_type={}&include_queries=true&include_hierarchical_rules=true&include_test_cases=true
  */
 export const getPolicyDetails = async (bank_id, policy_type) => {
   const params = new URLSearchParams({ 
     bank_id, 
     policy_type,
     include_queries: 'true',
-    include_rules: 'true'
+    include_hierarchical_rules: 'true',
+    include_test_cases: 'true'
   });
   const url = buildApiUrl(`/api/v1/policies?${params}`);
   console.log('GET Policy Details - URL:', url);
-  console.log('GET Policy Details - Params:', { bank_id, policy_type, include_queries: true, include_rules: true });
+  console.log('GET Policy Details - Params:', { bank_id, policy_type, include_queries: true, include_hierarchical_rules: true, include_test_cases: true });
 
   const response = await fetch(url, {
     method: 'GET',
@@ -446,4 +447,88 @@ export const getPolicyDetails = async (bank_id, policy_type) => {
   }
 
   return response.json();
+};
+
+/**
+ * Update hierarchical rules validation fields - POST /api/v1/policies/update-hierarchical-rules
+ * @param {Object} params
+ * @param {string} params.bank_id - Bank identifier
+ * @param {string} params.policy_type - Policy type identifier
+ * @param {Array} params.updates - Array of rule updates
+ * @returns {Promise<Object>} - Update result
+ * 
+ * Request Body Example:
+ * {
+ *   "bank_id": "chase",
+ *   "policy_type": "insurance",
+ *   "updates": [
+ *     {
+ *       "rule_id": "1.1",
+ *       "expected": "Age >= 18",
+ *       "actual": "Age = 25",
+ *       "confidence": 0.95,
+ *       "passed": true,
+ *       "description": "Updated rule description",
+ *       "name": "Age Check Rule"
+ *     }
+ *   ]
+ * }
+ * 
+ * Response:
+ * {
+ *   "status": "success",
+ *   "message": "Successfully updated 2 rules",
+ *   "updated_rules": [...],
+ *   "bank_id": "chase",
+ *   "policy_type": "insurance"
+ * }
+ */
+export const updateHierarchicalRules = async ({ bank_id, policy_type, updates }) => {
+  const url = buildApiUrl('/api/v1/policies/update-hierarchical-rules');
+  console.log('POST Update Hierarchical Rules - URL:', url);
+  console.log('POST Update Hierarchical Rules - Request:', { bank_id, policy_type, updates });
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bank_id,
+        policy_type,
+        updates,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to update hierarchical rules: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+      }
+      
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.statusText = response.statusText;
+      throw error;
+    }
+
+    return response.json();
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error(`Unable to connect to the API server. Please ensure the backend is running.`);
+    }
+    throw error;
+  }
 };
