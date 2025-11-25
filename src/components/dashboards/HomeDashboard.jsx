@@ -199,7 +199,7 @@ const HomeDashboard = () => {
   const [showCloseConfirmation, setShowCloseConfirmation] = React.useState(false)
 
   // Recursive component to render rule dependencies as a tree
-  const RuleDependency = ({ dep, depth = 1, isLast = false, onEdit }) => {
+  const RuleDependency = ({ dep, depth = 1, isLast = false, onEdit, onView }) => {
     const maxDepth = 5
     const depthColors = [
       '#9333ea', // Purple
@@ -247,74 +247,81 @@ const HomeDashboard = () => {
         {/* Rule content */}
         <div className="flex-1 pb-3">
           <div 
-            className="p-2.5 rounded-lg border transition-all duration-200 hover:shadow-md"
+            className="p-3 rounded-lg border transition-all duration-200 hover:shadow-md"
             style={{
-              background: 'rgba(255, 255, 255, 0.8)',
+              background: 'rgba(255, 255, 255, 0.9)',
               borderColor: 'rgba(250, 129, 47, 0.15)',
               borderLeftWidth: '3px',
               borderLeftColor: lineColor
             }}
           >
-            {/* Header */}
-            <div className="flex items-start gap-2 mb-1.5">
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 mb-0.5">
-                  <p className="text-xs font-bold leading-tight" style={{ color: 'hsl(var(--color-foreground))' }}>
-                    {dep.name}
-                  </p>
-                  {dep.dependencies && dep.dependencies.length > 0 && (
-                    <div 
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded"
-                      style={{
-                        background: `${lineColor}10`,
-                        border: `1px solid ${lineColor}30`,
-                        fontSize: '10px',
-                        fontWeight: 600
-                      }}
-                    >
-                      <GitBranch className="w-2.5 h-2.5" style={{ color: lineColor }} />
-                      <span style={{ color: lineColor }}>{dep.dependencies.length}</span>
-                    </div>
-                  )}
-                </div>
-                <p className="text-xs leading-tight" style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '11px' }}>
-                  {dep.description}
+            {/* Header with title and badges */}
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0 text-left">
+                <p className="text-sm font-bold text-left" style={{ color: 'hsl(var(--color-foreground))' }}>
+                  {dep.id}. {dep.name}
                 </p>
+                {dep.dependencies && dep.dependencies.length > 0 && (
+                  <div 
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-md"
+                    style={{
+                      background: `${lineColor}15`,
+                      border: `1px solid ${lineColor}40`
+                    }}
+                  >
+                    <GitBranch className="w-3 h-3" style={{ color: lineColor }} />
+                    <span className="text-xs font-semibold" style={{ color: lineColor }}>
+                      {dep.dependencies.length}
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
-
-            {/* Values */}
-            <div className="flex items-center gap-3 mb-1.5">
-              <div className="flex-1">
-                <div className="flex items-center gap-1.5 text-xs">
-                  <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px', fontWeight: '600' }}>Expected:</span>
-                  <span className="font-bold font-mono" style={{ color: 'hsl(var(--color-foreground))', fontSize: '11px' }}>
-                    {dep.expected}
-                  </span>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-xs shrink-0">
-                <div className="flex items-center gap-1.5">
-                  <span style={{ color: 'hsl(var(--color-muted-foreground))', fontSize: '10px', fontWeight: '600' }}>Confidence:</span>
-                  <span className="font-bold" style={{ color: 'hsl(var(--color-primary))', fontSize: '11px' }}>
+              
+              {/* Action buttons */}
+              <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 px-2 py-0.5 rounded-md" style={{ background: 'rgba(250, 129, 47, 0.08)' }}>
+                  <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-primary))' }}>
                     {(dep.confidence * 100).toFixed(0)}%
                   </span>
                 </div>
+                {onView && (
+                  <div
+                    className="h-6 w-6 hover:bg-blue-50 transition-colors rounded-md flex items-center justify-center cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onView(dep)
+                    }}
+                    title="View rule details"
+                  >
+                    <Eye className="w-3.5 h-3.5" style={{ color: '#3b82f6' }} />
+                  </div>
+                )}
                 {onEdit && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-5 w-5 p-0 hover:bg-orange-100 transition-colors"
+                  <div
+                    className="h-6 w-6 hover:bg-orange-50 transition-colors rounded-md flex items-center justify-center cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation()
                       onEdit(dep)
                     }}
                     title="Edit rule"
                   >
-                    <Edit className="w-3 h-3" style={{ color: 'hsl(var(--color-primary))' }} />
-                  </Button>
+                    <Edit className="w-3.5 h-3.5" style={{ color: 'hsl(var(--color-primary))' }} />
+                  </div>
                 )}
               </div>
+            </div>
+            
+            {/* Description */}
+            <p className="text-xs leading-relaxed mb-2 text-left" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+              {dep.description}
+            </p>
+
+            {/* Expected Condition */}
+            <div className="text-xs text-left">
+              <span className="font-semibold text-left" style={{ color: 'hsl(var(--color-muted-foreground))' }}>Expected: </span>
+              <span className="font-mono font-semibold text-left" style={{ color: 'hsl(var(--color-foreground))' }}>
+                {dep.expected}
+              </span>
             </div>
           </div>
 
@@ -328,6 +335,7 @@ const HomeDashboard = () => {
                   depth={depth + 1}
                   isLast={index === dep.dependencies.length - 1}
                   onEdit={onEdit}
+                  onView={onView}
                 />
               ))}
             </div>
@@ -775,13 +783,14 @@ const HomeDashboard = () => {
         console.log('Extracted rules fetched:', rulesResponse)
 
         // Transform API response to match UI format
-        const rules = rulesResponse.extracted_rules || apiResponse.extracted_rules || apiResponse.rules || []
+        const rules = rulesResponse.rules || rulesResponse.extracted_rules || apiResponse.extracted_rules || apiResponse.rules || []
         const transformedRules = rules.map((rule, index) => ({
           id: rule.id || index + 1,
           name: rule.rule_name || rule.name || `Rule ${index + 1}`,
           description: rule.description || rule.requirement || `${rule.field || ''} ${rule.operator || ''} ${rule.value || ''}`.trim(),
           status: rule.is_active !== false ? "Active" : "Inactive",
-          confidence: rule.confidence || rule.confidence_score || 0.9
+          confidence: rule.confidence || rule.confidence_score || 0.9,
+          category: rule.category || "General"
         }))
 
         return {
@@ -1926,8 +1935,12 @@ const HomeDashboard = () => {
     const [extractedRules, setExtractedRules] = React.useState([])
     const [hierarchicalRules, setHierarchicalRules] = React.useState([])
     const [testExamples, setTestExamples] = React.useState(defaultTestExamples)
+    const [testExample, setTestExample] = React.useState("approved")
+    const [testResponse, setTestResponse] = React.useState(null)
+    const [isExecuting, setIsExecuting] = React.useState(false)
     const [isLoadingDetails, setIsLoadingDetails] = React.useState(false)
     const [detailsError, setDetailsError] = React.useState(null)
+    const [displayedRequestBody, setDisplayedRequestBody] = React.useState({})
     
     // State for edit rule modal
     const [isEditModalOpen, setIsEditModalOpen] = React.useState(false)
@@ -1935,6 +1948,10 @@ const HomeDashboard = () => {
     const [isUpdatingRule, setIsUpdatingRule] = React.useState(false)
     const [updateSuccess, setUpdateSuccess] = React.useState(false)
     const [updateError, setUpdateError] = React.useState(null)
+    
+    // State for rule details modal
+    const [isRuleDetailsModalOpen, setIsRuleDetailsModalOpen] = React.useState(false)
+    const [selectedRuleForDetails, setSelectedRuleForDetails] = React.useState(null)
 
     // Handler to open edit modal
     const handleEditRule = (rule) => {
@@ -1948,6 +1965,66 @@ const HomeDashboard = () => {
     const handleCloseEditModal = () => {
       setIsEditModalOpen(false)
       setSelectedRuleForEdit(null)
+    }
+
+    // Handler to open rule details modal
+    const handleViewRuleDetails = (rule) => {
+      // Find matching extraction query from policyDetails
+      const extractionQueries = policyDetails?.extraction_queries || []
+      
+      // Try to find a matching extraction query by comparing rule content
+      const matchingQuery = extractionQueries.find(q => 
+        q.response_text && rule.description && 
+        (q.response_text.toLowerCase().includes(rule.description.substring(0, 30).toLowerCase()) ||
+         rule.description.toLowerCase().includes(q.response_text.substring(0, 30).toLowerCase()) ||
+         (rule.name && q.query_text && q.query_text.toLowerCase().includes(rule.name.toLowerCase())))
+      ) || extractionQueries[0] // Fallback to first query if no match found
+      
+      const ruleWithDetails = {
+        ...rule,
+        // Real extraction metadata from API
+        extractionMetadata: {
+          sourceDocument: matchingQuery?.source_document || policyDetails?.container?.policy_presigned_url || policyDetails?.container?.s3_policy_url || "policy_document.pdf",
+          pageNumber: matchingQuery?.page_number || rule.page_number || null,
+          extractionMethod: matchingQuery?.extraction_method || "textract",
+          extractedAt: matchingQuery?.created_at || policyDetails?.container?.deployed_at || new Date().toISOString(),
+          clauseReference: matchingQuery?.clause_reference || rule.clause_reference || (rule.id ? `Section ${rule.id}` : null),
+          documentHash: matchingQuery?.document_hash || policyDetails?.container?.document_hash || null,
+          confidence: matchingQuery?.confidence_score || (rule.confidence ? rule.confidence * 100 : null),
+          queryText: matchingQuery?.query_text || null,
+          responseText: matchingQuery?.response_text || rule.description,
+          isActive: matchingQuery?.is_active !== undefined ? matchingQuery.is_active : true,
+          updatedAt: matchingQuery?.updated_at || null
+        },
+        // Related queries from extraction_queries (find similar queries)
+        relatedQueries: extractionQueries
+          .filter(q => q.query_text && q.response_text && q.id !== matchingQuery?.id)
+          .slice(0, 5)
+          .map(q => ({
+            query: q.query_text,
+            confidence: q.confidence_score || 0,
+            response: q.response_text,
+            createdAt: q.created_at
+          })),
+        // Container details
+        containerDetails: policyDetails?.container ? {
+          containerId: policyDetails.container.container_id,
+          bankId: policyDetails.container.bank_id,
+          policyType: policyDetails.container.policy_type_id,
+          status: policyDetails.container.status,
+          healthStatus: policyDetails.container.health_status,
+          deployedAt: policyDetails.container.deployed_at,
+          policyUrl: policyDetails.container.policy_presigned_url
+        } : null
+      }
+      setSelectedRuleForDetails(ruleWithDetails)
+      setIsRuleDetailsModalOpen(true)
+    }
+
+    // Handler to close rule details modal
+    const handleCloseRuleDetailsModal = () => {
+      setIsRuleDetailsModalOpen(false)
+      setSelectedRuleForDetails(null)
       setUpdateError(null)
     }
 
@@ -2092,38 +2169,42 @@ const HomeDashboard = () => {
             testCasesData.forEach((testCase, index) => {
               const key = testCase.test_case_id || testCase.id || `test_${index}`
               
-              // Extract data from test case (could be in input_data or directly in testCase)
-              const tcData = testCase.input_data || testCase
+              // Extract data from test case - API uses applicant_data and policy_data
+              const applicantData = testCase.applicant_data || testCase.input_data?.applicant || testCase.applicant || {}
+              const policyData = testCase.policy_data || testCase.input_data?.policy || testCase.policy || {}
               
               // Map test case data to the expected request structure
               const requestBody = {
-                bank_id: tcData.bank_id || selectedBank?.id || "chase",
-                policy_type: tcData.policy_type || selectedPolicy || "insurance",
+                bank_id: testCase.bank_id || selectedBank?.id || "rbc",
+                policy_type: testCase.policy_type || selectedPolicy || "insurance",
                 applicant: {
-                  age: tcData.applicant?.age || tcData.age || 35,
-                  annualIncome: tcData.applicant?.annualIncome || tcData.annualIncome || tcData.annual_income || 75000,
-                  creditScore: tcData.applicant?.creditScore || tcData.creditScore || tcData.credit_score || 720,
-                  healthConditions: tcData.applicant?.healthConditions || tcData.healthConditions || tcData.health_conditions || "good",
-                  smoker: tcData.applicant?.smoker !== undefined ? tcData.applicant.smoker : (tcData.smoker !== undefined ? tcData.smoker : false)
+                  age: applicantData.age || 35,
+                  annualIncome: applicantData.annualIncome || applicantData.annual_income || 75000,
+                  creditScore: applicantData.creditScore || applicantData.credit_score || 720,
+                  healthConditions: applicantData.healthConditions || applicantData.health_conditions || applicantData.healthStatus || "good",
+                  smoker: applicantData.smoker !== undefined ? applicantData.smoker : false,
+                  criminalRecord: applicantData.criminalRecord || applicantData.criminal_record || "none"
                 },
                 policy: {
-                  coverageAmount: tcData.policy?.coverageAmount || tcData.coverageAmount || tcData.coverage_amount || 500000,
-                  termYears: tcData.policy?.termYears || tcData.termYears || tcData.term_years || tcData.term || 20,
-                  type: tcData.policy?.type || tcData.policyType || tcData.policy_type || tcData.type || "term_life"
+                  coverageAmount: policyData.coverageAmount || policyData.coverage_amount || 500000,
+                  termYears: policyData.termYears || policyData.term_years || policyData.term || 20,
+                  type: policyData.type || policyData.policy_type || "term_life"
                 }
               }
               
               dynamicTestExamples[key] = {
-                name: testCase.name || testCase.description || `Test Case ${index + 1}`,
+                name: testCase.test_case_name || testCase.name || testCase.description || `Test Case ${index + 1}`,
                 request: requestBody
               }
             })
             console.log('Dynamic Test Examples:', dynamicTestExamples)
+            console.log('Test Examples Keys:', Object.keys(dynamicTestExamples))
             setTestExamples(dynamicTestExamples)
             
             // Set first test example as default selection if current selection doesn't exist
             const firstKey = Object.keys(dynamicTestExamples)[0]
-            if (firstKey) {
+            console.log('Setting first test example key:', firstKey)
+            if (firstKey && dynamicTestExamples[firstKey]) {
               setTestExample(firstKey)
             }
           } else {
@@ -2154,6 +2235,29 @@ const HomeDashboard = () => {
 
       fetchDetails()
     }, [selectedBank, selectedPolicy])
+
+    // Update displayed request body when test example or related data changes
+    React.useEffect(() => {
+      console.log('Updating displayed request body...')
+      console.log('Current testExample:', testExample)
+      console.log('Available testExamples:', Object.keys(testExamples))
+      
+      const exampleRequest = testExamples[testExample]?.request
+      console.log('Example request found:', exampleRequest)
+      
+      if (exampleRequest) {
+        const requestBody = {
+          ...exampleRequest,
+          bank_id: selectedBank?.id || exampleRequest.bank_id,
+          policy_type: selectedPolicy || exampleRequest.policy_type
+        }
+        console.log('Setting displayed request body:', requestBody)
+        setDisplayedRequestBody(requestBody)
+      } else {
+        console.log('No example request found, clearing displayed request body')
+        setDisplayedRequestBody({})
+      }
+    }, [testExample, testExamples, selectedBank, selectedPolicy])
 
     if (!selectedBank) {
       return (
@@ -2653,67 +2757,75 @@ const HomeDashboard = () => {
                               }}
                             >
                               <AccordionTrigger className="px-4 py-3 hover:no-underline">
-                                <div className="flex items-start justify-between w-full pr-2">
-                                  <div className="flex-1 text-left">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                      <span className="text-sm font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                                        {rule.id}. {rule.name}
-                                      </span>
-                                      {rule.dependencies && rule.dependencies.length > 0 && (
-                                        <div 
-                                          className="flex items-center gap-1 px-2 py-0.5 rounded-md"
-                                          style={{
-                                            background: 'rgba(147, 51, 234, 0.08)',
-                                            border: '1px solid rgba(147, 51, 234, 0.2)'
-                                          }}
-                                        >
-                                          <GitBranch className="w-3 h-3" style={{ color: '#9333ea' }} />
-                                          <span className="text-xs font-semibold" style={{ color: '#9333ea' }}>
-                                            {rule.dependencies.length}
-                                          </span>
-                                        </div>
-                                      )}
-                                    </div>
-                                    <p className="text-xs leading-relaxed" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-                                      {rule.description}
-                                    </p>
+                                <div className="flex items-center justify-between w-full pr-2 gap-4">
+                                  {/* Left: Rule Number & Name */}
+                                  <div className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                                    <span className="text-sm font-bold text-left" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                      {index + 1}. {rule.name}
+                                    </span>
                                   </div>
-                                  <div className="flex items-center gap-2 ml-2">
-                                    <div className="flex items-center gap-1">
-                                      <span className="text-xs" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-                                        Confidence:
-                                      </span>
-                                      <span className="text-xs font-bold" style={{ color: 'hsl(var(--color-primary))' }}>
-                                        {(rule.confidence * 100).toFixed(0)}%
-                                      </span>
+                                  
+                                  {/* Right: Dependencies Badge, Icons */}
+                                  <div className="flex items-center gap-2 shrink-0">
+                                    {rule.dependencies && rule.dependencies.length > 0 && (
+                                      <div 
+                                        className="flex items-center gap-1 px-2 py-1 rounded-md"
+                                        style={{
+                                          background: 'rgba(147, 51, 234, 0.08)',
+                                          border: '1px solid rgba(147, 51, 234, 0.2)'
+                                        }}
+                                      >
+                                        <GitBranch className="w-3.5 h-3.5" style={{ color: '#9333ea' }} />
+                                        <span className="text-xs font-semibold" style={{ color: '#9333ea' }}>
+                                          {rule.dependencies.length}
+                                        </span>
+                                      </div>
+                                    )}
+                                    <div
+                                      className="h-7 w-7 p-0 hover:bg-blue-50 transition-colors rounded-md flex items-center justify-center cursor-pointer"
+                                      onClick={(e) => {
+                                        e.stopPropagation()
+                                        handleViewRuleDetails(rule)
+                                      }}
+                                      title="View rule details"
+                                    >
+                                      <Eye className="w-4 h-4" style={{ color: '#3b82f6' }} />
                                     </div>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-6 w-6 p-0 hover:bg-orange-100 transition-colors"
+                                    <div
+                                      className="h-7 w-7 p-0 hover:bg-orange-50 transition-colors rounded-md flex items-center justify-center cursor-pointer"
                                       onClick={(e) => {
                                         e.stopPropagation()
                                         handleEditRule(rule)
                                       }}
                                       title="Edit rule"
                                     >
-                                      <Edit className="w-3.5 h-3.5" style={{ color: 'hsl(var(--color-primary))' }} />
-                                    </Button>
+                                      <Edit className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
+                                    </div>
                                   </div>
                                 </div>
                               </AccordionTrigger>
-                              <AccordionContent className="px-4 pb-3">
-                                <div className="space-y-3 mt-2">
-                                  {/* Rule Details */}
+                              <AccordionContent className="px-4 pb-4 pt-3">
+                                <div className="space-y-4 text-left">
+                                  {/* Description */}
+                                  <div className="text-left">
+                                    <p className="text-xs font-semibold mb-1.5 text-left" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                      Description
+                                    </p>
+                                    <p className="text-sm leading-relaxed text-left" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                      {rule.description}
+                                    </p>
+                                  </div>
+
+                                  {/* Expected Condition */}
                                   {rule.expected && (
-                                    <div className="p-3 rounded-lg" style={{
+                                    <div className="p-3 rounded-lg text-left" style={{
                                       background: 'rgba(250, 129, 47, 0.05)',
-                                      border: '1px solid rgba(250, 129, 47, 0.1)'
+                                      border: '1px solid rgba(250, 129, 47, 0.15)'
                                     }}>
-                                      <p className="text-xs font-semibold mb-2" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                      <p className="text-xs font-semibold mb-2 text-left" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
                                         Expected Condition
                                       </p>
-                                      <p className="text-sm font-mono leading-relaxed" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                      <p className="text-sm font-mono leading-relaxed text-left" style={{ color: 'hsl(var(--color-foreground))' }}>
                                         {rule.expected}
                                       </p>
                                     </div>
@@ -2721,14 +2833,14 @@ const HomeDashboard = () => {
 
                                   {/* Dependencies */}
                                   {rule.dependencies && rule.dependencies.length > 0 && (
-                                    <div>
+                                    <div className="text-left">
                                       <div className="flex items-center gap-2 mb-3">
-                                        <GitBranch className="w-4 h-4" style={{ color: 'hsl(var(--color-primary))' }} />
-                                        <p className="text-xs font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                                          Dependencies ({rule.dependencies.length})
+                                        <GitBranch className="w-4 h-4" style={{ color: '#9333ea' }} />
+                                        <p className="text-xs font-bold text-left" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                          Sub-Rules ({rule.dependencies.length})
                                         </p>
                                       </div>
-                                      <div className="space-y-2 pl-2">
+                                      <div className="space-y-2 pl-1 text-left">
                                         {rule.dependencies.map((dep, depIndex) => (
                                           <div key={dep.id || depIndex}>
                                             <RuleDependency 
@@ -2736,6 +2848,7 @@ const HomeDashboard = () => {
                                               depth={1} 
                                               isLast={depIndex === rule.dependencies.length - 1}
                                               onEdit={handleEditRule}
+                                              onView={handleViewRuleDetails}
                                             />
                                           </div>
                                         ))}
@@ -2834,13 +2947,31 @@ const HomeDashboard = () => {
               borderColor: 'rgba(250, 129, 47, 0.2)'
             }}>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-bold" style={{
-                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
-                }}>Quick Test</CardTitle>
-                <CardDescription>Test extracted rules with sample data</CardDescription>
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1">
+                    <CardTitle className="text-lg font-bold" style={{
+                      background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text'
+                    }}>Quick Test</CardTitle>
+                    <CardDescription>Test extracted rules with sample data</CardDescription>
+                  </div>
+                  <Button
+                    onClick={() => policyDetails?.container?.test_harness_presigned_url && window.open(policyDetails.container.test_harness_presigned_url, '_blank')}
+                    disabled={!policyDetails?.container?.test_harness_presigned_url}
+                    variant="outline"
+                    size="sm"
+                    className="shadow-md hover:shadow-lg transition-all duration-300 font-semibold shrink-0"
+                    style={{
+                      borderColor: 'rgba(250, 129, 47, 0.3)',
+                      color: 'hsl(var(--color-primary))'
+                    }}
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Test Harness
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 {/* Example Selector */}
@@ -2894,7 +3025,7 @@ const HomeDashboard = () => {
                       color: '#d4d4d4'
                     }}
                   >
-                    <pre>{JSON.stringify(getDynamicRequestBody(), null, 2)}</pre>
+                    <pre>{JSON.stringify(displayedRequestBody, null, 2)}</pre>
                   </div>
                 </div>
 
@@ -3090,6 +3221,271 @@ const HomeDashboard = () => {
         onSave={handleSaveRuleUpdate}
         isLoading={isUpdatingRule}
       />
+
+      {/* Rule Details Modal */}
+      <Dialog open={isRuleDetailsModalOpen} onOpenChange={setIsRuleDetailsModalOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{
+          background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.98) 0%, rgba(254, 243, 226, 0.95) 100%)',
+          borderColor: 'rgba(250, 129, 47, 0.3)'
+        }}>
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold flex items-center gap-3" style={{
+              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>
+              <FileText className="w-6 h-6" style={{ color: 'hsl(var(--color-primary))' }} />
+              Rule Details
+            </DialogTitle>
+            <DialogDescription>
+              Detailed information about the extracted rule and its source
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedRuleForDetails && (
+            <div className="space-y-6 mt-4">
+              {/* Rule Overview */}
+              <Card style={{
+                background: 'rgba(255, 255, 255, 0.7)',
+                borderColor: 'rgba(250, 129, 47, 0.2)'
+              }}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
+                    Rule Overview
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2 mb-2">
+                      <Badge style={{
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                        color: 'white'
+                      }}>
+                        ID: {selectedRuleForDetails.id}
+                      </Badge>
+                      <Badge variant="outline" style={{
+                        borderColor: 'rgba(250, 129, 47, 0.3)',
+                        color: 'hsl(var(--color-foreground))'
+                      }}>
+                        {selectedRuleForDetails.dependencies?.length || 0} Dependencies
+                      </Badge>
+                    </div>
+                    <h3 className="text-lg font-bold mb-2" style={{ color: 'hsl(var(--color-foreground))' }}>
+                      {selectedRuleForDetails.name}
+                    </h3>
+                    <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                      {selectedRuleForDetails.description}
+                    </p>
+                  </div>
+
+                  {/* Confidence Score */}
+                  <div className="p-4 rounded-lg" style={{
+                    background: 'rgba(250, 129, 47, 0.05)',
+                    border: '1px solid rgba(250, 129, 47, 0.2)'
+                  }}>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-semibold" style={{ color: 'hsl(var(--color-foreground))' }}>
+                        Confidence Score
+                      </span>
+                      <span className="text-2xl font-bold" style={{ color: 'hsl(var(--color-primary))' }}>
+                        {(selectedRuleForDetails.confidence * 100).toFixed(0)}%
+                      </span>
+                    </div>
+                    <div className="w-full h-2 rounded-full overflow-hidden" style={{ background: 'rgba(250, 129, 47, 0.2)' }}>
+                      <div
+                        className="h-full rounded-full transition-all duration-300"
+                        style={{
+                          width: `${selectedRuleForDetails.confidence * 100}%`,
+                          background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Expected Condition */}
+                  {selectedRuleForDetails.expected && (
+                    <div>
+                      <Label className="text-sm font-semibold mb-2" style={{ color: 'hsl(var(--color-foreground))' }}>
+                        Expected Condition
+                      </Label>
+                      <div className="p-3 rounded-lg font-mono text-sm" style={{
+                        background: '#2d2d2d',
+                        color: '#d4d4d4'
+                      }}>
+                        {selectedRuleForDetails.expected}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Extraction Metadata */}
+              <Card style={{
+                background: 'rgba(255, 255, 255, 0.7)',
+                borderColor: 'rgba(250, 129, 47, 0.2)'
+              }}>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2" style={{ color: 'hsl(var(--color-foreground))' }}>
+                    <FileText className="w-5 h-5" style={{ color: 'hsl(var(--color-primary))' }} />
+                    Extraction Metadata
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                        Source Document
+                      </Label>
+                      <p className="text-sm font-mono truncate" style={{ color: 'hsl(var(--color-foreground))' }}>
+                        {selectedRuleForDetails.extractionMetadata?.sourceDocument?.split('/').pop() || 'policy_document.pdf'}
+                      </p>
+                    </div>
+                    {selectedRuleForDetails.extractionMetadata?.pageNumber && (
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                          Page Number
+                        </Label>
+                        <p className="text-sm font-semibold" style={{ color: 'hsl(var(--color-primary))' }}>
+                          Page {selectedRuleForDetails.extractionMetadata.pageNumber}
+                        </p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                        Extraction Method
+                      </Label>
+                      <Badge variant="outline" style={{
+                        borderColor: 'rgba(250, 129, 47, 0.3)',
+                        color: 'hsl(var(--color-foreground))'
+                      }}>
+                        {selectedRuleForDetails.extractionMetadata?.extractionMethod?.toUpperCase() || 'TEXTRACT'}
+                      </Badge>
+                    </div>
+                    {selectedRuleForDetails.extractionMetadata?.clauseReference && (
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                          Clause Reference
+                        </Label>
+                        <p className="text-sm" style={{ color: 'hsl(var(--color-foreground))' }}>
+                          {selectedRuleForDetails.extractionMetadata.clauseReference}
+                        </p>
+                      </div>
+                    )}
+                    {selectedRuleForDetails.extractionMetadata?.extractedAt && (
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                          Extracted At
+                        </Label>
+                        <p className="text-sm" style={{ color: 'hsl(var(--color-foreground))' }}>
+                          {new Date(selectedRuleForDetails.extractionMetadata.extractedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedRuleForDetails.extractionMetadata?.updatedAt && (
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                          Last Updated
+                        </Label>
+                        <p className="text-sm" style={{ color: 'hsl(var(--color-foreground))' }}>
+                          {new Date(selectedRuleForDetails.extractionMetadata.updatedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    )}
+                    {selectedRuleForDetails.extractionMetadata?.confidence !== null && selectedRuleForDetails.extractionMetadata?.confidence !== undefined && (
+                      <div className="space-y-1">
+                        <Label className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                          Confidence Score
+                        </Label>
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'rgba(250, 129, 47, 0.2)' }}>
+                            <div
+                              className="h-full rounded-full transition-all duration-300"
+                              style={{
+                                width: `${selectedRuleForDetails.extractionMetadata.confidence}%`,
+                                background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)'
+                              }}
+                            />
+                          </div>
+                          <span className="text-sm font-bold" style={{ color: 'hsl(var(--color-primary))' }}>
+                            {selectedRuleForDetails.extractionMetadata.confidence}%
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Dependencies */}
+              {selectedRuleForDetails.dependencies && selectedRuleForDetails.dependencies.length > 0 && (
+                <Card style={{
+                  background: 'rgba(255, 255, 255, 0.7)',
+                  borderColor: 'rgba(250, 129, 47, 0.2)'
+                }}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg font-bold flex items-center gap-2" style={{ color: 'hsl(var(--color-foreground))' }}>
+                      <GitBranch className="w-5 h-5" style={{ color: '#9333ea' }} />
+                      Dependencies ({selectedRuleForDetails.dependencies.length})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {selectedRuleForDetails.dependencies.map((dep, idx) => (
+                        <div key={idx} className="p-3 rounded-lg border" style={{
+                          background: 'rgba(147, 51, 234, 0.03)',
+                          borderColor: 'rgba(147, 51, 234, 0.2)'
+                        }}>
+                          <div className="flex items-start justify-between mb-2">
+                            <span className="text-sm font-bold" style={{ color: '#9333ea' }}>
+                              {dep.id}. {dep.name}
+                            </span>
+                            <Badge variant="outline" style={{
+                              borderColor: 'rgba(147, 51, 234, 0.3)',
+                              color: '#9333ea',
+                              fontSize: '10px'
+                            }}>
+                              {(dep.confidence * 100).toFixed(0)}%
+                            </Badge>
+                          </div>
+                          <p className="text-xs" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                            {dep.description}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+            </div>
+          )}
+
+          <div className="flex justify-end gap-2 mt-6">
+            <Button
+              variant="outline"
+              onClick={handleCloseRuleDetailsModal}
+              style={{
+                borderColor: 'rgba(250, 129, 47, 0.3)'
+              }}
+            >
+              Close
+            </Button>
+            {policyDetails?.container?.policy_presigned_url && (
+              <Button
+                onClick={() => window.open(policyDetails.container.policy_presigned_url, '_blank')}
+                style={{
+                  background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                  border: 'none'
+                }}
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                View Source Document
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* Success/Error Notification */}
       {updateSuccess && (
@@ -3797,55 +4193,78 @@ const HomeDashboard = () => {
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
-                          {processingOutput.rules.map((rule) => (
-                            <div
-                              key={rule.id}
-                              className="p-3 rounded-lg border transition-all duration-300 hover:shadow-md"
-                              style={{
-                                background: 'rgba(255, 255, 255, 0.6)',
-                                borderColor: 'rgba(250, 129, 47, 0.15)'
-                              }}
-                            >
-                              <div className="flex items-start justify-between gap-2 mb-1">
-                                <p className="text-sm font-bold" style={{ color: 'hsl(var(--color-foreground))' }}>
-                                  {rule.id}. {rule.name}
-                                </p>
-                                <Badge 
-                                  variant="outline" 
-                                  className="text-xs font-semibold shrink-0"
-                                  style={{
-                                    background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)',
-                                    borderColor: 'rgba(34, 197, 94, 0.3)',
-                                    color: 'hsl(var(--color-success))'
-                                  }}
-                                >
-                                  {rule.status}
-                                </Badge>
-                              </div>
-                              <p className="text-xs mb-2" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-                                {rule.description}
-                              </p>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
-                                  Confidence:
-                                </span>
-                                <div className="flex-1 max-w-[120px] h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(250, 129, 47, 0.2)' }}>
-                                  <div
-                                    className="h-full rounded-full transition-all duration-300"
+                        {processingOutput.rules && processingOutput.rules.length > 0 ? (
+                          <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2">
+                            {processingOutput.rules.map((rule) => (
+                              <div
+                                key={rule.id}
+                                className="p-3 rounded-lg border transition-all duration-300 hover:shadow-md"
+                                style={{
+                                  background: 'rgba(255, 255, 255, 0.6)',
+                                  borderColor: 'rgba(250, 129, 47, 0.15)'
+                                }}
+                              >
+                                <div className="flex items-start justify-between gap-2 mb-1">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-bold mb-1" style={{ color: 'hsl(var(--color-foreground))' }}>
+                                      {rule.id}. {rule.name}
+                                    </p>
+                                    {rule.category && (
+                                      <Badge 
+                                        variant="outline" 
+                                        className="text-xs font-medium"
+                                        style={{
+                                          background: 'rgba(250, 129, 47, 0.08)',
+                                          borderColor: 'rgba(250, 129, 47, 0.25)',
+                                          color: 'hsl(var(--color-primary))'
+                                        }}
+                                      >
+                                        {rule.category}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs font-semibold shrink-0"
                                     style={{
-                                      width: `${rule.confidence * 100}%`,
-                                      background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)'
+                                      background: 'linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(34, 197, 94, 0.05) 100%)',
+                                      borderColor: 'rgba(34, 197, 94, 0.3)',
+                                      color: 'hsl(var(--color-success))'
                                     }}
-                                  />
+                                  >
+                                    {rule.status}
+                                  </Badge>
                                 </div>
-                                <span className="text-xs font-bold" style={{ color: 'hsl(var(--color-primary))' }}>
-                                  {(rule.confidence * 100).toFixed(0)}%
-                                </span>
+                                <p className="text-xs mb-2" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                  {rule.description}
+                                </p>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-semibold" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                                    Confidence:
+                                  </span>
+                                  <div className="flex-1 max-w-[120px] h-1.5 rounded-full overflow-hidden" style={{ background: 'rgba(250, 129, 47, 0.2)' }}>
+                                    <div
+                                      className="h-full rounded-full transition-all duration-300"
+                                      style={{
+                                        width: `${rule.confidence * 100}%`,
+                                        background: 'linear-gradient(90deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)'
+                                      }}
+                                    />
+                                  </div>
+                                  <span className="text-xs font-bold" style={{ color: 'hsl(var(--color-primary))' }}>
+                                    {(rule.confidence * 100).toFixed(0)}%
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center py-8 text-center">
+                            <p className="text-sm" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                              No rules extracted yet
+                            </p>
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
 

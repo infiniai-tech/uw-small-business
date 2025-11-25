@@ -693,6 +693,14 @@ const AdminDashboard = () => {
       if (result.status === "success" || result.status === "processed" || result.status === "completed") {
         console.log('Status matches! Fetching rules...');
         await fetchExtractedRules(currentBankId, currentPolicyType);
+        
+        // Update processing results with extracted rules count after fetching
+        setTimeout(() => {
+          setProcessingResults(prev => ({
+            ...prev,
+            rulesCount: extractedRules.length
+          }));
+        }, 1000);
       } else {
         console.log('Status does not match success or processed or completed');
       }
@@ -755,6 +763,9 @@ const AdminDashboard = () => {
             : doc
         )
       );
+
+      // Update processing results with the latest data including container
+      setProcessingResults(result);
 
       // Continue polling if still in progress
       if (result.status === "in_progress") {
@@ -1578,38 +1589,48 @@ const AdminDashboard = () => {
                 </div>
               )}
 
-              {(processingResults.jar_s3_url || processingResults.drl_s3_url || processingResults.excel_s3_url) && (
+              {(processingResults.container?.jar_presigned_url || processingResults.container?.drl_presigned_url || processingResults.container?.excel_presigned_url || processingResults.jar_s3_url || processingResults.drl_s3_url || processingResults.excel_s3_url) && (
                 <div className="pt-4 border-t">
                   <h4 className="font-medium mb-3">Download Generated Files</h4>
                   <div className="flex gap-2">
-                    {processingResults.jar_s3_url && (
+                    {(processingResults.container?.pdf_presigned_url) && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleDownload(processingResults.jar_s3_url, 'rules.jar')}
+                        onClick={() => window.open(processingResults.container.pdf_presigned_url, '_blank')}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        JAR File
+                        PDF File
                       </Button>
                     )}
-                    {processingResults.drl_s3_url && (
+                    {(processingResults.container?.excel_presigned_url || processingResults.excel_s3_url) && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleDownload(processingResults.drl_s3_url, 'rules.drl')}
+                        onClick={() => window.open(processingResults.container?.excel_presigned_url || processingResults.excel_s3_url, '_blank')}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Excel File
+                      </Button>
+                    )}
+                    {(processingResults.container?.drl_presigned_url || processingResults.drl_s3_url) && (
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => window.open(processingResults.container?.drl_presigned_url || processingResults.drl_s3_url, '_blank')}
                       >
                         <Download className="w-4 h-4 mr-2" />
                         DRL File
                       </Button>
                     )}
-                    {processingResults.excel_s3_url && (
+                    {(processingResults.container?.jar_presigned_url || processingResults.jar_s3_url) && (
                       <Button 
                         variant="outline" 
                         size="sm"
-                        onClick={() => handleDownload(processingResults.excel_s3_url, 'rules.xlsx')}
+                        onClick={() => window.open(processingResults.container?.jar_presigned_url || processingResults.jar_s3_url, '_blank')}
                       >
                         <Download className="w-4 h-4 mr-2" />
-                        Excel File
+                        JAR File
                       </Button>
                     )}
                   </div>
