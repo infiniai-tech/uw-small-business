@@ -532,3 +532,85 @@ export const updateHierarchicalRules = async ({ bank_id, policy_type, updates })
     throw error;
   }
 };
+
+/**
+ * Add a new hierarchical rule - POST /api/v1/policies/add-hierarchical-rule
+ * @param {Object} params
+ * @param {string} params.bank_id - Bank identifier
+ * @param {string} params.policy_type - Policy type identifier
+ * @param {Object} params.rule - The new rule to add
+ * @param {string} params.parent_rule_id - Optional parent rule ID for sub-rules
+ * @returns {Promise<Object>} - Add result
+ * 
+ * Request Body Example:
+ * {
+ *   "bank_id": "chase",
+ *   "policy_type": "insurance",
+ *   "rule": {
+ *     "rule_id": "1.4",
+ *     "name": "New Age Check",
+ *     "expected": "Age >= 21",
+ *     "description": "Applicant must be at least 21 years old"
+ *   },
+ *   "parent_rule_id": "1" // Optional - for sub-rules
+ * }
+ * 
+ * Response:
+ * {
+ *   "status": "success",
+ *   "message": "Successfully added new rule",
+ *   "rule": {...},
+ *   "bank_id": "chase",
+ *   "policy_type": "insurance"
+ * }
+ */
+export const addHierarchicalRule = async ({ bank_id, policy_type, rule, parent_rule_id }) => {
+  const url = buildApiUrl('/api/v1/policies/add-hierarchical-rule');
+  console.log('POST Add Hierarchical Rule - URL:', url);
+  console.log('POST Add Hierarchical Rule - Request:', { bank_id, policy_type, rule, parent_rule_id });
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        bank_id,
+        policy_type,
+        rule,
+        parent_rule_id: parent_rule_id || null,
+      }),
+    });
+
+    if (!response.ok) {
+      let errorMessage = `Failed to add hierarchical rule: ${response.status} ${response.statusText}`;
+      
+      try {
+        const errorData = await response.json();
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.error) {
+          errorMessage = errorData.error;
+        } else if (errorData.detail) {
+          errorMessage = errorData.detail;
+        }
+      } catch (parseError) {
+        console.error('Failed to parse error response:', parseError);
+      }
+      
+      const error = new Error(errorMessage);
+      error.status = response.status;
+      error.statusText = response.statusText;
+      throw error;
+    }
+
+    return response.json();
+  } catch (error) {
+    // Handle network errors
+    if (error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error(`Unable to connect to the API server. Please ensure the backend is running.`);
+    }
+    throw error;
+  }
+};

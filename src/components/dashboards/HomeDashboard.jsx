@@ -23,8 +23,9 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { FileCheck, BarChart3, Users, Shield, TrendingUp, LayoutDashboard, Building2, Plus, Search, Upload, X, Loader2, CheckCircle, AlertCircle, FileText, Download, Eye, Play, XCircle, Clock, Zap, ArrowRight, GitBranch, ChevronLeft, ChevronRight, Edit } from "lucide-react"
-import { getAllBanks, getBankPolicies, getPolicyDetails, getExtractedRules, evaluatePolicy, uploadDocumentToS3, processPolicyFromS3, updateHierarchicalRules } from "@/services/api"
+import { getAllBanks, getBankPolicies, getPolicyDetails, getExtractedRules, evaluatePolicy, uploadDocumentToS3, processPolicyFromS3, updateHierarchicalRules, addHierarchicalRule } from "@/services/api"
 import EditRuleModal from "@/components/EditRuleModal"
+import AddRuleModal from "@/components/AddRuleModal"
 
 // Custom Rule Node Component for the board
 const RuleNode = ({ data }) => {
@@ -1949,6 +1950,11 @@ const HomeDashboard = () => {
     const [updateSuccess, setUpdateSuccess] = React.useState(false)
     const [updateError, setUpdateError] = React.useState(null)
     
+    // State for add rule modal
+    const [isAddRuleModalOpen, setIsAddRuleModalOpen] = React.useState(false)
+    const [isAddingRule, setIsAddingRule] = React.useState(false)
+    const [addRuleError, setAddRuleError] = React.useState(null)
+    
     // State for rule details modal
     const [isRuleDetailsModalOpen, setIsRuleDetailsModalOpen] = React.useState(false)
     const [selectedRuleForDetails, setSelectedRuleForDetails] = React.useState(null)
@@ -1965,6 +1971,107 @@ const HomeDashboard = () => {
     const handleCloseEditModal = () => {
       setIsEditModalOpen(false)
       setSelectedRuleForEdit(null)
+    }
+
+    // Handler to open add rule modal
+    const handleOpenAddRuleModal = () => {
+      setIsAddRuleModalOpen(true)
+      setAddRuleError(null)
+    }
+
+    // Handler to close add rule modal
+    const handleCloseAddRuleModal = () => {
+      setIsAddRuleModalOpen(false)
+      setAddRuleError(null)
+    }
+
+    // Helper to add a rule to the hierarchical structure
+    const addRuleToHierarchy = (rules, newRule, parentId) => {
+      if (!parentId) {
+        // Add as top-level rule
+        return [...rules, newRule]
+      }
+      
+      // Find parent and add as dependency
+      return rules.map(rule => {
+        if (rule.id === parentId) {
+          return {
+            ...rule,
+            dependencies: [...(rule.dependencies || []), newRule]
+          }
+        }
+        
+        // Recursively search in dependencies
+        if (rule.dependencies && rule.dependencies.length > 0) {
+          return {
+            ...rule,
+            dependencies: addRuleToHierarchy(rule.dependencies, newRule, parentId)
+          }
+        }
+        
+        return rule
+      })
+    }
+
+    // Handler to save new rule
+    const handleSaveNewRule = async (formData) => {
+      if (!selectedBank || !selectedPolicy) {
+        setAddRuleError('Missing bank or policy information')
+        return
+      }
+
+      setIsAddingRule(true)
+      setAddRuleError(null)
+      
+      try {
+        // Prepare the new rule object
+        const newRule = {
+          id: formData.rule_id,
+          name: formData.name,
+          expected: formData.expected,
+          description: formData.description,
+          requirement: formData.description,
+          confidence: 1.0, // New rules start with full confidence
+          dependencies: []
+        }
+
+        // Call the API to add the rule
+        const response = await addHierarchicalRule({
+          bank_id: selectedBank.id,
+          policy_type: selectedPolicy,
+          rule: {
+            rule_id: formData.rule_id,
+            name: formData.name,
+            expected: formData.expected,
+            description: formData.description
+          },
+          parent_rule_id: formData.parent_rule_id || null
+        })
+        
+        console.log('Add rule response:', response)
+        
+        // Update the local hierarchical rules list
+        setHierarchicalRules(prevRules => 
+          addRuleToHierarchy(prevRules, newRule, formData.parent_rule_id)
+        )
+        
+        // Close modal first
+        handleCloseAddRuleModal()
+        
+        // Then show success toast after modal closes
+        setTimeout(() => {
+          setUpdateSuccess(true)
+          // Hide toast after 3 seconds
+          setTimeout(() => {
+            setUpdateSuccess(false)
+          }, 3000)
+        }, 150)
+      } catch (error) {
+        console.error('Failed to add rule:', error)
+        setAddRuleError(error.message || 'Failed to add rule')
+      } finally {
+        setIsAddingRule(false)
+      }
     }
 
     // Handler to open rule details modal
@@ -2028,6 +2135,32 @@ const HomeDashboard = () => {
       setUpdateError(null)
     }
 
+    // Recursive helper to update a rule at any depth in the hierarchical structure
+    const updateRuleRecursively = (rules, ruleId, updateData) => {
+      return rules.map(rule => {
+        // Check if this is the rule to update
+        if (rule.id === ruleId) {
+          return {
+            ...rule,
+            name: updateData.name || rule.name,
+            description: updateData.description || rule.description,
+            expected: updateData.expected || rule.expected,
+            requirement: updateData.description || rule.requirement
+          }
+        }
+        
+        // If this rule has dependencies, recursively update them
+        if (rule.dependencies && rule.dependencies.length > 0) {
+          return {
+            ...rule,
+            dependencies: updateRuleRecursively(rule.dependencies, ruleId, updateData)
+          }
+        }
+        
+        return rule
+      })
+    }
+
     // Handler to save rule updates
     const handleSaveRuleUpdate = async (updateData) => {
       if (!selectedBank || !selectedPolicy) {
@@ -2048,10 +2181,12 @@ const HomeDashboard = () => {
         
         console.log('Rule update response:', response)
         
-        // Show success state
-        setUpdateSuccess(true)
+        // Update the local hierarchical rules list (recursively handles nested rules)
+        setHierarchicalRules(prevRules => 
+          updateRuleRecursively(prevRules, updateData.rule_id, updateData)
+        )
         
-        // Update the local rules list
+        // Update the extracted rules list as well
         setExtractedRules(prevRules => 
           prevRules.map(rule => 
             rule.id === updateData.rule_id 
@@ -2068,14 +2203,24 @@ const HomeDashboard = () => {
           )
         )
         
-        // Close modal after a short delay
+        // Close modal first
+        handleCloseEditModal()
+        
+        // Then show success toast after modal closes
         setTimeout(() => {
-          handleCloseEditModal()
-          setUpdateSuccess(false)
-        }, 1500)
+          setUpdateSuccess(true)
+          // Hide toast after 3 seconds
+          setTimeout(() => {
+            setUpdateSuccess(false)
+          }, 3000)
+        }, 150)
       } catch (error) {
         console.error('Failed to update rule:', error)
         setUpdateError(error.message || 'Failed to update rule')
+        // Hide error after 5 seconds
+        setTimeout(() => {
+          setUpdateError(null)
+        }, 5000)
       } finally {
         setIsUpdatingRule(false)
       }
@@ -2709,7 +2854,24 @@ const HomeDashboard = () => {
                 )}
 
                 {/* Hierarchical Rules */}
-                {hierarchicalRules.length > 0 && (
+                {policyDetails && (
+                  <>
+                  {/* Add Rule Button - Above the card */}
+                  <div className="flex justify-end mb-2">
+                    <Button
+                      size="sm"
+                      onClick={handleOpenAddRuleModal}
+                      className="h-8 px-3 text-xs font-semibold gap-1.5"
+                      style={{
+                        background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                        border: 'none'
+                      }}
+                    >
+                      <Plus className="w-4 h-4" />
+                      Add Rule
+                    </Button>
+                  </div>
+                  
                   <Card className="border shadow-md" style={{
                     background: 'linear-gradient(135deg, rgba(255, 250, 240, 0.95) 0%, rgba(254, 243, 226, 0.8) 100%)',
                     borderColor: 'rgba(250, 129, 47, 0.2)'
@@ -2744,6 +2906,34 @@ const HomeDashboard = () => {
                       </div>
                     </CardHeader>
                     <CardContent>
+                      {hierarchicalRules.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-8 text-center">
+                          <div 
+                            className="w-16 h-16 rounded-full flex items-center justify-center mb-4"
+                            style={{ background: 'rgba(250, 129, 47, 0.1)' }}
+                          >
+                            <FileText className="w-8 h-8" style={{ color: 'hsl(var(--color-primary))' }} />
+                          </div>
+                          <p className="text-sm font-semibold mb-1" style={{ color: 'hsl(var(--color-foreground))' }}>
+                            No Rules Yet
+                          </p>
+                          <p className="text-xs mb-4" style={{ color: 'hsl(var(--color-muted-foreground))' }}>
+                            Add your first rule to start building the policy logic
+                          </p>
+                          <Button
+                            size="sm"
+                            onClick={handleOpenAddRuleModal}
+                            className="font-semibold gap-1.5"
+                            style={{
+                              background: 'linear-gradient(135deg, hsl(var(--color-primary)) 0%, hsl(var(--color-secondary)) 100%)',
+                              border: 'none'
+                            }}
+                          >
+                            <Plus className="w-4 h-4" />
+                            Add First Rule
+                          </Button>
+                        </div>
+                      ) : (
                       <div className="max-h-[500px] overflow-y-auto pr-2">
                         <Accordion type="multiple" className="w-full space-y-2">
                           {hierarchicalRules.map((rule, index) => (
@@ -2861,8 +3051,10 @@ const HomeDashboard = () => {
                           ))}
                         </Accordion>
                       </div>
+                      )}
                     </CardContent>
                   </Card>
+                  </>
                 )}
 
                 {/* Download Files */}
@@ -3222,6 +3414,16 @@ const HomeDashboard = () => {
         isLoading={isUpdatingRule}
       />
 
+      {/* Add Rule Modal */}
+      <AddRuleModal
+        isOpen={isAddRuleModalOpen}
+        onClose={handleCloseAddRuleModal}
+        onSave={handleSaveNewRule}
+        isLoading={isAddingRule}
+        parentRules={hierarchicalRules}
+        error={addRuleError}
+      />
+
       {/* Rule Details Modal */}
       <Dialog open={isRuleDetailsModalOpen} onOpenChange={setIsRuleDetailsModalOpen}>
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto" style={{
@@ -3497,7 +3699,7 @@ const HomeDashboard = () => {
           }}
         >
           <CheckCircle className="w-5 h-5" />
-          <span className="font-semibold">Rule updated successfully!</span>
+          <span className="font-semibold">Rule saved successfully!</span>
         </div>
       )}
       
